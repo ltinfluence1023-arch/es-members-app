@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChipCard } from "@/components/customer/ChipCard";
 import { TodayRanking } from "@/components/customer/TodayRanking";
 import { LiveAtStore } from "@/components/customer/LiveAtStore";
-import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2 } from "lucide-react";
+import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2, Trophy } from "lucide-react";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
 import { fetchAchievementProgress } from "@/lib/utils/autoAchievements";
 import { calcAchievementRank } from "@/lib/utils/achievementRank";
@@ -154,6 +154,53 @@ export default async function HomePage() {
                 未了
               </span>
             )}
+
+            <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
+          </div>
+        </Link>
+
+        {/* アチーブメント */}
+        <Link href="/achievements" className="block interactive">
+          <div
+            className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
+            style={{ borderColor: "oklch(0.63 0.26 22 / 30%)" }}
+          >
+            {/* アイコン */}
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: earnedPts > 0
+                  ? "linear-gradient(135deg, oklch(0.55 0.22 60) 0%, oklch(0.45 0.20 55) 100%)"
+                  : "oklch(1 0 0 / 8%)",
+                boxShadow: earnedPts > 0 ? "0 0 12px oklch(0.55 0.22 60 / 40%)" : undefined,
+              }}
+            >
+              <Trophy size={20} style={{ color: earnedPts > 0 ? "#facc15" : "rgba(255,255,255,0.4)" }} />
+            </div>
+
+            {/* テキスト＋プログレスバー */}
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold leading-tight">アチーブメント</p>
+                <span className="text-[11px] font-black" style={{ color: "var(--primary)" }}>
+                  {achievementRank.name}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "oklch(1 0 0 / 8%)" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${achievementPct}%`,
+                      background: "linear-gradient(90deg, oklch(0.58 0.26 22) 0%, oklch(0.72 0.22 355) 100%)",
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                  {earnedPts}/{totalPts}pt
+                </span>
+              </div>
+            </div>
 
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>

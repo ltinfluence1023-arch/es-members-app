@@ -2,17 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, History, QrCode, Trophy, Ticket, Award } from "lucide-react";
+import { House, History, QrCode, Trophy, Ticket } from "lucide-react";
 
 const LEFT_ITEMS = [
-  { href: "/home",         icon: House,   label: "ホーム" },
-  { href: "/history",      icon: History, label: "履歴" },
+  { href: "/home",    icon: House,   label: "ホーム" },
+  { href: "/history", icon: History, label: "履歴" },
 ];
 
 const RIGHT_ITEMS = [
-  { href: "/achievements", icon: Award,   label: "実績" },
-  { href: "/ranking",      icon: Trophy,  label: "ランキング" },
-  { href: "/coupons",      icon: Ticket,  label: "クーポン" },
+  { href: "/ranking", icon: Trophy, label: "ランキング" },
+  { href: "/coupons", icon: Ticket, label: "クーポン" },
 ];
 
 export function BottomNav() {
@@ -96,17 +95,17 @@ function NavBtn({
           />
         )}
         <Icon
-          size={22}
+          size={26}
           strokeWidth={active ? 2.6 : 2.0}
           style={{
             color: active ? "var(--primary)" : "rgba(255,255,255,0.62)",
             filter: active ? "drop-shadow(0 0 12px oklch(0.65 0.26 22 / 80%))" : undefined,
           }}
-          className={`transition-transform duration-200 ${active ? "scale-110" : ""}`}
+          className={`transition-transform duration-200 ${active ? "scale-115" : ""}`}
         />
       </div>
       <span
-        className="text-[10px] font-bold tracking-wide transition-colors duration-200"
+        className="text-[11px] font-bold tracking-wide transition-colors duration-200"
         style={{
           color: active ? "var(--primary)" : "rgba(255,255,255,0.52)",
           textShadow: active ? "0 0 8px oklch(0.65 0.26 22 / 55%)" : undefined,
