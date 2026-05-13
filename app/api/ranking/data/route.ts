@@ -14,7 +14,9 @@ type RankTab =
   | "total_visit"         // 累計来店回数
   | "monthly_received"    // 月間チップ獲得（受取り合計）
   | "monthly_sent"        // 月間チップ送付（送り側合計）
-  | "total_chip";         // 保有チップ合計
+  | "total_chip"          // 保有チップ合計
+  | "bj_monthly"          // BJ月間純損益
+  | "bj_total";           // BJ累計純損益
 
 interface RankEntry { rank: number; userId: string; nickname: string; value: number; unit?: string }
 interface Period { label: string; from: string; to: string }
@@ -165,6 +167,39 @@ async function getRanking(tab: RankTab): Promise<{ ranking: RankEntry[]; period:
     return {
       ranking: sorted.map(([id, value], i) => ({ rank: i + 1, userId: id, nickname: nickMap[id] ?? "ゲスト", value, unit: "chip" })),
       period: { label: `${now.getFullYear()}年${now.getMonth() + 1}月`, from: fmtDate(monthStart), to: fmtDate(monthEnd) },
+    };
+  }
+
+  // bj_monthly — BJ月間純損益
+  if (tab === "bj_monthly") {
+    const { data } = await adminClient
+      .from("blackjack_sessions")
+      .select("user_id, net_chips")
+      .eq("settled", true)
+      .gte("created_at", monthStart.toISOString());
+    const totals: Record<string, number> = {};
+    for (const r of data ?? []) totals[r.user_id] = (totals[r.user_id] ?? 0) + r.net_chips;
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const nickMap = await getUserMap(sorted.map(([id]) => id));
+    return {
+      ranking: sorted.map(([id, value], i) => ({ rank: i + 1, userId: id, nickname: nickMap[id] ?? "ゲスト", value, unit: "chip" })),
+      period: { label: `${now.getFullYear()}年${now.getMonth() + 1}月 BJ`, from: fmtDate(monthStart), to: fmtDate(monthEnd) },
+    };
+  }
+
+  // bj_total — BJ累計純損益
+  if (tab === "bj_total") {
+    const { data } = await adminClient
+      .from("blackjack_sessions")
+      .select("user_id, net_chips")
+      .eq("settled", true);
+    const totals: Record<string, number> = {};
+    for (const r of data ?? []) totals[r.user_id] = (totals[r.user_id] ?? 0) + r.net_chips;
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const nickMap = await getUserMap(sorted.map(([id]) => id));
+    return {
+      ranking: sorted.map(([id, value], i) => ({ rank: i + 1, userId: id, nickname: nickMap[id] ?? "ゲスト", value, unit: "chip" })),
+      period: { label: "BJ累計", from: "—", to: "—" },
     };
   }
 

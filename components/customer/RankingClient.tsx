@@ -7,7 +7,8 @@ import { AvatarImage } from "@/components/customer/AvatarImage";
 type RankTab =
   | "daily_chip" | "monthly_chip" | "yearly_chip"
   | "weekly_visit" | "monthly_visit" | "yearly_visit" | "total_visit"
-  | "monthly_received" | "monthly_sent" | "total_chip";
+  | "monthly_received" | "monthly_sent" | "total_chip"
+  | "bj_monthly" | "bj_total";
 
 interface RankEntry { rank: number; userId: string; nickname: string; value: number; unit?: string }
 interface RankingData {
@@ -18,26 +19,30 @@ interface RankingData {
   updatedAt: string;
 }
 
-type Category = "chip" | "visit" | "transfer";
+type Category = "chip" | "visit" | "transfer" | "bj";
 const TABS: { key: RankTab; label: string; emoji: string; category: Category }[] = [
   // チップ増減
-  { key: "daily_chip",       label: "本日",   emoji: "🔥", category: "chip" },
-  { key: "monthly_chip",     label: "月間",   emoji: "🪙", category: "chip" },
-  { key: "yearly_chip",      label: "年間",   emoji: "👑", category: "chip" },
+  { key: "daily_chip",       label: "本日",    emoji: "🔥", category: "chip" },
+  { key: "monthly_chip",     label: "月間",    emoji: "🪙", category: "chip" },
+  { key: "yearly_chip",      label: "年間",    emoji: "👑", category: "chip" },
   { key: "total_chip",       label: "現在保有", emoji: "💎", category: "chip" },
   // 来店
-  { key: "weekly_visit",     label: "今週",   emoji: "📅", category: "visit" },
-  { key: "monthly_visit",    label: "月間",   emoji: "🍷", category: "visit" },
-  { key: "yearly_visit",     label: "年間",   emoji: "🌟", category: "visit" },
-  { key: "total_visit",      label: "累計",   emoji: "🏆", category: "visit" },
+  { key: "weekly_visit",     label: "今週",    emoji: "📅", category: "visit" },
+  { key: "monthly_visit",    label: "月間",    emoji: "🍷", category: "visit" },
+  { key: "yearly_visit",     label: "年間",    emoji: "🌟", category: "visit" },
+  { key: "total_visit",      label: "累計",    emoji: "🏆", category: "visit" },
   // 送受
   { key: "monthly_received", label: "月間獲得", emoji: "🎁", category: "transfer" },
   { key: "monthly_sent",     label: "月間送付", emoji: "💝", category: "transfer" },
+  // BJ
+  { key: "bj_monthly",       label: "月間",    emoji: "🃏", category: "bj" },
+  { key: "bj_total",         label: "累計",    emoji: "♠️", category: "bj" },
 ];
 const CATEGORIES: { key: Category; label: string }[] = [
   { key: "chip",     label: "チップ" },
   { key: "visit",    label: "来店" },
   { key: "transfer", label: "送受" },
+  { key: "bj",       label: "BJ" },
 ];
 
 const REFRESH_SEC = 30;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, User, Coins, Star, FileText, Shield, LogOut, ChevronRight, Gem, HelpCircle, Trophy } from "lucide-react";
+import { Menu, User, Coins, Star, FileText, Shield, LogOut, ChevronRight, Gem, HelpCircle, Trophy, Spade } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
   { href: "/achievements",      icon: Trophy,     label: "アチーブメント" },
+  { href: "/blackjack",         icon: Spade,      label: "ブラックジャック" },
   { href: "/quiz",              icon: HelpCircle, label: "デイリークイズ" },
   { href: "/menu/profile",      icon: User,       label: "プロフィール" },
   { href: "/history?tab=chip",  icon: Coins,      label: "チップ履歴" },

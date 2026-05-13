@@ -15,6 +15,7 @@ const PROTECTED_CUSTOMER_PATHS = [
   "/profile",
   "/quiz",
   "/achievements",
+  "/blackjack",
 ];
 
 // R-701: 顧客ルートは認証済顧客のみ

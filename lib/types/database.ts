@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz" | "achievement";
+export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz" | "achievement" | "blackjack";
 export type FeeSource = "transfer_fee" | "rake" | "manual_add" | "manual_subtract";
 export type PointTransactionType =
   | "accounting_reward"
@@ -479,6 +479,20 @@ export interface Database {
           answered_at?: string;
         };
         Update: { chip_awarded?: boolean };
+        Relationships: [];
+      };
+      blackjack_sessions: {
+        Row: {
+          id: string; user_id: string; bet: number;
+          deck: unknown; player_hand: unknown; dealer_hand: unknown;
+          status: string; net_chips: number; settled: boolean; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; bet: number;
+          deck: unknown; player_hand: unknown; dealer_hand: unknown;
+          status?: string; net_chips?: number; settled?: boolean; created_at?: string;
+        };
+        Update: { player_hand?: unknown; dealer_hand?: unknown; deck?: unknown; status?: string; net_chips?: number; settled?: boolean; };
         Relationships: [];
       };
       achievements: {

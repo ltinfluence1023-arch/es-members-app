@@ -6,7 +6,7 @@ import { ChipCard } from "@/components/customer/ChipCard";
 import { TodayRanking } from "@/components/customer/TodayRanking";
 import { LiveAtStore } from "@/components/customer/LiveAtStore";
 import { ActivityFeed, type ActivityEvent } from "@/components/customer/ActivityFeed";
-import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2, Trophy } from "lucide-react";
+import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2, Trophy, Spade } from "lucide-react";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
 import { fetchAchievementProgress } from "@/lib/utils/autoAchievements";
 import { calcAchievementRank } from "@/lib/utils/achievementRank";
@@ -223,6 +223,31 @@ export default async function HomePage() {
                 未了
               </span>
             )}
+            <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
+          </div>
+        </Link>
+
+        {/* ブラックジャック */}
+        <Link href="/blackjack" className="block interactive">
+          <div
+            className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
+            style={{ borderColor: "oklch(0.45 0.15 145 / 35%)" }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: "linear-gradient(135deg, oklch(0.30 0.10 145) 0%, oklch(0.18 0.06 145) 100%)",
+                boxShadow: "0 0 12px oklch(0.40 0.15 145 / 40%)",
+              }}
+            >
+              <Spade size={20} style={{ color: "#4ade80" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold leading-tight">ブラックジャック</p>
+              <p className="text-xs leading-tight mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                vs. つっちー ・ チップで対戦
+              </p>
+            </div>
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>
         </Link>
