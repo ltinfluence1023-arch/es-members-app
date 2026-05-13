@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Loader2, Send } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Loader2, Send, Lock } from "lucide-react";
 import { calcAchievementRank, ACHIEVEMENT_RANKS } from "@/lib/utils/achievementRank";
 
 interface Achievement {
@@ -11,28 +11,38 @@ interface Achievement {
   earned: boolean; earnedAt: string | null; claimStatus: string | null;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  visit: "🗓 来店", social: "🤝 交流", game: "🎲 ゲーム", sns: "📱 SNS", community: "🌟 コミュニティ",
+const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
+  visit:     { emoji: "🗓", label: "来店" },
+  social:    { emoji: "🤝", label: "交流" },
+  game:      { emoji: "🎲", label: "ゲーム" },
+  sns:       { emoji: "📱", label: "SNS" },
+  community: { emoji: "🌟", label: "コミュニティ" },
+};
+
+const TRACK_LABEL: Record<string, string> = {
+  auto:        "🤖 自動達成",
+  staff_grant: "👨‍💼 スタッフが付与",
+  user_claim:  "📱 自己申請",
 };
 
 const STARS = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
 function StatusBadge({ a }: { a: Achievement }) {
   if (a.earned) return (
-    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full"
-      style={{ background: "oklch(0.55 0.18 145 / 20%)", color: "#4ade80", border: "1px solid oklch(0.55 0.18 145 / 35%)" }}>
+    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{ background: "oklch(0.55 0.18 145 / 20%)", color: "#4ade80", border: "1px solid oklch(0.55 0.18 145 / 40%)" }}>
       <CheckCircle2 size={10} /> 達成
     </span>
   );
   if (a.claimStatus === "pending") return (
-    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full"
-      style={{ background: "oklch(0.65 0.18 60 / 20%)", color: "#facc15", border: "1px solid oklch(0.65 0.18 60 / 35%)" }}>
+    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{ background: "oklch(0.65 0.18 60 / 20%)", color: "#facc15", border: "1px solid oklch(0.65 0.18 60 / 40%)" }}>
       <Clock size={10} /> 審査中
     </span>
   );
   if (a.claimStatus === "rejected") return (
-    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full"
-      style={{ background: "oklch(0.63 0.26 22 / 15%)", color: "var(--primary)", border: "1px solid oklch(0.63 0.26 22 / 30%)" }}>
+    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{ background: "oklch(0.63 0.26 22 / 15%)", color: "var(--primary)", border: "1px solid oklch(0.63 0.26 22 / 35%)" }}>
       <XCircle size={10} /> 却下
     </span>
   );
@@ -40,7 +50,7 @@ function StatusBadge({ a }: { a: Achievement }) {
 }
 
 export function AchievementsClient() {
-  const [data, setData]       = useState<{ achievements: Achievement[]; earnedPts: number; totalPts: number } | null>(null);
+  const [data, setData]     = useState<{ achievements: Achievement[]; earnedPts: number; totalPts: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
@@ -67,94 +77,181 @@ export function AchievementsClient() {
   }
 
   if (loading) return (
-    <div className="px-4 py-10 flex justify-center"><Loader2 size={24} className="animate-spin text-primary" /></div>
+    <div className="px-4 py-16 flex justify-center">
+      <Loader2 size={28} className="animate-spin text-primary" />
+    </div>
   );
   if (!data) return null;
 
   const { achievements, earnedPts, totalPts } = data;
   const { rank, pct } = calcAchievementRank(earnedPts, totalPts);
 
-  // カテゴリ別にグループ化
-  const grouped = Object.entries(CATEGORY_LABELS).map(([key, label]) => ({
-    key, label,
+  // 次のランクを計算
+  const currentRankIdx = ACHIEVEMENT_RANKS.findIndex((r) => r.key === rank.key);
+  const nextRank = currentRankIdx > 0 ? ACHIEVEMENT_RANKS[currentRankIdx - 1] : null;
+  const ptsToNext = nextRank ? Math.ceil(totalPts * nextRank.minPct / 100) - earnedPts : 0;
+
+  const grouped = Object.entries(CATEGORY_META).map(([key, meta]) => ({
+    key, meta,
     items: achievements.filter((a) => a.category === key),
   })).filter((g) => g.items.length > 0);
 
   return (
-    <div className="px-4 py-4 space-y-5 animate-page-in pb-24">
-      <div className="space-y-1">
+    <div className="px-4 py-4 space-y-5 animate-page-in pb-28">
+      <div className="space-y-0.5">
         <p className="label-gaming">achievements</p>
         <p className="text-xs text-muted-foreground">ミッションを達成してランクアップ！</p>
       </div>
 
       {/* ランクカード */}
-      <div className="card-elevated rounded-2xl p-4 space-y-3">
+      <div
+        className="card-elevated rounded-2xl p-5 space-y-4"
+        style={{ borderColor: "oklch(0.63 0.26 22 / 35%)" }}
+      >
+        {/* ランク名と達成率 */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xl font-black" style={{ color: "var(--primary)" }}>{rank.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{earnedPts} / {totalPts} pt</p>
+            <p className="text-[10px] font-black tracking-[0.2em] uppercase text-muted-foreground mb-1">現在のランク</p>
+            <p className="text-2xl font-black" style={{ color: "var(--primary)", textShadow: "var(--shadow-neon)" }}>
+              {rank.name}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">{earnedPts} / {totalPts} pt 達成</p>
           </div>
-          <div className="text-right">
-            <p className="text-3xl font-black">{pct}<span className="text-lg">%</span></p>
-            <p className="text-[10px] text-muted-foreground">達成率</p>
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{
+              background: `conic-gradient(var(--primary) ${pct}%, oklch(1 0 0 / 8%) ${pct}%)`,
+              padding: "3px",
+            }}
+          >
+            <div
+              className="w-full h-full rounded-full flex items-center justify-center"
+              style={{ background: "oklch(0.115 0.014 22)" }}
+            >
+              <span className="text-lg font-black leading-none">{pct}<span className="text-[10px]">%</span></span>
+            </div>
           </div>
         </div>
+
         {/* プログレスバー */}
-        <div className="space-y-1.5">
-          <div className="h-2 rounded-full overflow-hidden" style={{ background: "oklch(1 0 0 / 8%)" }}>
+        <div>
+          <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "oklch(1 0 0 / 8%)" }}>
             <div
-              className="h-full rounded-full transition-all duration-500"
+              className="h-full rounded-full transition-all duration-700"
               style={{
                 width: `${pct}%`,
-                background: "linear-gradient(90deg, var(--primary) 0%, oklch(0.70 0.22 355) 100%)",
-                boxShadow: "var(--shadow-neon)",
+                background: "linear-gradient(90deg, oklch(0.58 0.26 22) 0%, oklch(0.72 0.22 355) 100%)",
+                boxShadow: "0 0 8px var(--primary)",
               }}
             />
           </div>
           {/* ランクマーカー */}
-          <div className="flex justify-between">
-            {ACHIEVEMENT_RANKS.slice().reverse().map((r) => (
+          <div className="flex justify-between mt-1.5">
+            {[...ACHIEVEMENT_RANKS].reverse().map((r) => (
               <div key={r.key} className="flex flex-col items-center gap-0.5">
-                <div className="w-px h-1.5" style={{ background: pct >= r.minPct ? "var(--primary)" : "oklch(1 0 0 / 20%)" }} />
-                <span className="text-[8px]" style={{ color: pct >= r.minPct ? "var(--primary)" : "var(--muted-foreground)" }}>
+                <div className="w-px h-1.5"
+                  style={{ background: pct >= r.minPct ? "var(--primary)" : "oklch(1 0 0 / 18%)" }} />
+                <span className="text-[8px] font-bold"
+                  style={{ color: pct >= r.minPct ? "var(--primary)" : "var(--muted-foreground)" }}>
                   {r.minPct}%
                 </span>
               </div>
             ))}
           </div>
         </div>
+
+        {/* 次のランクまで */}
+        {nextRank ? (
+          <p className="text-[11px] text-center" style={{ color: "var(--muted-foreground)" }}>
+            <span style={{ color: "var(--primary)", fontWeight: 700 }}>{nextRank.name}</span> まであと
+            <span className="font-black mx-1" style={{ color: "white" }}>{ptsToNext}pt</span>
+          </p>
+        ) : (
+          <p className="text-[11px] text-center font-bold" style={{ color: "#facc15" }}>
+            🏆 最高ランク達成！
+          </p>
+        )}
       </div>
 
-      {/* カテゴリ別ミッション一覧 */}
-      {grouped.map(({ key, label, items }) => {
+      {/* カテゴリ別ミッション */}
+      {grouped.map(({ key, meta, items }) => {
         const earnedCount = items.filter((a) => a.earned).length;
+        const allDone     = earnedCount === items.length;
+
         return (
           <div key={key} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="label-gaming text-xs">{label}</p>
-              <span className="text-[10px] text-muted-foreground">{earnedCount}/{items.length}</span>
+            {/* カテゴリヘッダー */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">{meta.emoji}</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.18em]"
+                  style={{ color: allDone ? "#4ade80" : "var(--primary)" }}>
+                  {meta.label}
+                </span>
+              </div>
+              <span
+                className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                style={{
+                  background: allDone ? "oklch(0.55 0.18 145 / 20%)" : "oklch(1 0 0 / 6%)",
+                  color: allDone ? "#4ade80" : "var(--muted-foreground)",
+                  border: `1px solid ${allDone ? "oklch(0.55 0.18 145 / 35%)" : "oklch(1 0 0 / 12%)"}`,
+                }}
+              >
+                {earnedCount} / {items.length}
+              </span>
             </div>
+
+            {/* ミッションリスト */}
             <div className="space-y-2">
               {items.map((a) => (
-                <div key={a.id} className="card-elevated rounded-xl overflow-hidden"
-                  style={{ opacity: a.earned ? 1 : 0.85 }}>
+                <div
+                  key={a.id}
+                  className="rounded-xl overflow-hidden transition-all duration-200"
+                  style={{
+                    background: a.earned
+                      ? "linear-gradient(135deg, oklch(0.16 0.03 145 / 40%) 0%, oklch(0.12 0.02 145 / 20%) 100%)"
+                      : "linear-gradient(145deg, oklch(0.145 0.016 22) 0%, oklch(0.105 0.010 22) 100%)",
+                    border: `1px solid ${a.earned ? "oklch(0.55 0.18 145 / 30%)" : "oklch(1 0 0 / 14%)"}`,
+                    boxShadow: a.earned ? "0 0 12px oklch(0.55 0.18 145 / 10%)" : undefined,
+                  }}
+                >
                   <button
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
                     onClick={() => setExpanded(expanded === a.id ? null : a.id)}
                   >
-                    {/* 達成チェック */}
-                    <div className="flex-shrink-0">
+                    {/* 達成アイコン */}
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{
+                        background: a.earned
+                          ? "oklch(0.55 0.18 145 / 20%)"
+                          : "oklch(1 0 0 / 6%)",
+                        border: `1px solid ${a.earned ? "oklch(0.55 0.18 145 / 40%)" : "oklch(1 0 0 / 15%)"}`,
+                      }}>
                       {a.earned
-                        ? <CheckCircle2 size={20} style={{ color: "#4ade80" }} />
-                        : <div className="w-5 h-5 rounded-full border-2" style={{ borderColor: "oklch(1 0 0 / 25%)" }} />}
+                        ? <CheckCircle2 size={18} style={{ color: "#4ade80" }} />
+                        : a.track_type === "auto"
+                          ? <span className="text-[14px]">🤖</span>
+                          : <Lock size={14} className="text-muted-foreground" />}
                     </div>
+
+                    {/* テキスト */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold leading-tight">{a.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {STARS(a.difficulty)} · {a.points}pt · +{a.chip_reward}chip
+                      <p className="text-sm font-bold leading-tight"
+                        style={{ color: a.earned ? "white" : "rgba(255,255,255,0.85)" }}>
+                        {a.name}
                       </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px]" style={{ color: "#facc15" }}>
+                          {STARS(a.difficulty)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {a.points}pt · +{a.chip_reward.toLocaleString()}chip
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+
+                    {/* バッジ + 展開 */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       <StatusBadge a={a} />
                       {expanded === a.id
                         ? <ChevronUp size={14} className="text-muted-foreground" />
@@ -162,42 +259,59 @@ export function AchievementsClient() {
                     </div>
                   </button>
 
+                  {/* 展開コンテンツ */}
                   {expanded === a.id && (
-                    <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
-                      <p className="text-xs text-muted-foreground">{a.description}</p>
-                      <div className="flex gap-3 text-[10px] text-muted-foreground">
-                        <span>方式: {a.track_type === "auto" ? "🤖 自動" : a.track_type === "staff_grant" ? "👨‍💼 スタッフ付与" : "📱 本人申請"}</span>
+                    <div className="px-4 pb-4 pt-3 space-y-3"
+                      style={{ borderTop: "1px solid oklch(1 0 0 / 8%)" }}>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{a.description}</p>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                          {TRACK_LABEL[a.track_type]}
+                        </span>
+                        {a.earned && a.earnedAt && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full"
+                            style={{ background: "oklch(0.55 0.18 145 / 15%)", color: "#4ade80" }}>
+                            ✓ {new Date(a.earnedAt).toLocaleDateString("ja-JP")} 達成
+                          </span>
+                        )}
                       </div>
-                      {a.earned && a.earnedAt && (
-                        <p className="text-[10px] text-green-400">
-                          達成日: {new Date(a.earnedAt).toLocaleDateString("ja-JP")}
-                        </p>
-                      )}
-                      {/* 申請フォーム（user_claim・未申請） */}
+
+                      {/* SNS申請フォーム */}
                       {a.track_type === "user_claim" && !a.earned && a.claimStatus !== "pending" && (
                         <div className="space-y-2 pt-1">
+                          <p className="text-[10px] text-muted-foreground">
+                            達成したら証拠URLとともに申請してください。スタッフが確認後に承認します。
+                          </p>
                           <input
                             className="w-full rounded-lg bg-secondary border border-border text-xs px-3 py-2 focus:outline-none focus:border-primary"
-                            placeholder="証拠URL（任意）"
+                            placeholder="証拠URL（投稿URL・スクリーンショットURL）"
                             value={claimInputs[a.id]?.url ?? ""}
                             onChange={(e) => setClaimInputs((p) => ({ ...p, [a.id]: { ...p[a.id], url: e.target.value } }))}
                           />
                           <input
                             className="w-full rounded-lg bg-secondary border border-border text-xs px-3 py-2 focus:outline-none focus:border-primary"
-                            placeholder="メッセージ（任意）"
+                            placeholder="一言メッセージ（任意）"
                             value={claimInputs[a.id]?.msg ?? ""}
                             onChange={(e) => setClaimInputs((p) => ({ ...p, [a.id]: { ...p[a.id], msg: e.target.value } }))}
                           />
                           <button
                             onClick={() => handleClaim(a.id)}
                             disabled={claiming === a.id}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white interactive"
-                            style={{ background: "var(--primary)" }}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white interactive"
+                            style={{ background: "var(--primary)", boxShadow: "var(--shadow-neon)" }}
                           >
                             {claiming === a.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                            申請する
+                            達成を申請する
                           </button>
                         </div>
+                      )}
+
+                      {/* スタッフ付与の案内 */}
+                      {a.track_type === "staff_grant" && !a.earned && (
+                        <p className="text-[10px] text-muted-foreground">
+                          スタッフが来店中に確認・付与します。達成したらスタッフに声をかけてみましょう！
+                        </p>
                       )}
                     </div>
                   )}

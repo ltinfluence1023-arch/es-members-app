@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, History, QrCode, Trophy, Ticket } from "lucide-react";
+import { House, History, QrCode, Trophy, Ticket, Award } from "lucide-react";
 
 const LEFT_ITEMS = [
-  { href: "/home",    icon: House,   label: "ホーム" },
-  { href: "/history", icon: History, label: "履歴" },
+  { href: "/home",         icon: House,   label: "ホーム" },
+  { href: "/history",      icon: History, label: "履歴" },
 ];
 
 const RIGHT_ITEMS = [
-  { href: "/ranking", icon: Trophy, label: "ランキング" },
-  { href: "/coupons", icon: Ticket, label: "クーポン" },
+  { href: "/achievements", icon: Award,   label: "実績" },
+  { href: "/ranking",      icon: Trophy,  label: "ランキング" },
+  { href: "/coupons",      icon: Ticket,  label: "クーポン" },
 ];
 
 export function BottomNav() {
@@ -42,20 +43,13 @@ export function BottomNav() {
         <div className="absolute left-1/2 -translate-x-1/2 -top-2 flex flex-col items-center gap-1">
           <Link href="/qr" className="transition-all duration-150 active:scale-90 active:opacity-90">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              {/* Expanding pulse ring */}
               <div
                 className="ring-expand absolute inset-0 rounded-full"
-                style={{
-                  border: "2px solid oklch(0.65 0.26 22 / 55%)",
-                }}
+                style={{ border: "2px solid oklch(0.65 0.26 22 / 55%)" }}
               />
-              {/* Second ring, offset timing */}
               <div
                 className="ring-expand absolute inset-0 rounded-full"
-                style={{
-                  border: "2px solid oklch(0.65 0.26 22 / 35%)",
-                  animationDelay: "1s",
-                }}
+                style={{ border: "2px solid oklch(0.65 0.26 22 / 35%)", animationDelay: "1s" }}
               />
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center relative"
@@ -95,27 +89,24 @@ function NavBtn({
       className="flex-1 flex flex-col items-center justify-end pb-2.5 gap-1 transition-all duration-150 active:scale-90 active:opacity-70"
     >
       <div className="relative flex items-center justify-center">
-        {/* Active glow halo */}
         {active && (
           <div
             className="absolute inset-[-6px] rounded-full pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, oklch(0.65 0.26 22 / 30%) 0%, transparent 70%)",
-            }}
+            style={{ background: "radial-gradient(circle, oklch(0.65 0.26 22 / 30%) 0%, transparent 70%)" }}
           />
         )}
         <Icon
-          size={26}
+          size={22}
           strokeWidth={active ? 2.6 : 2.0}
           style={{
             color: active ? "var(--primary)" : "rgba(255,255,255,0.62)",
             filter: active ? "drop-shadow(0 0 12px oklch(0.65 0.26 22 / 80%))" : undefined,
           }}
-          className={`transition-transform duration-200 ${active ? "scale-115" : ""}`}
+          className={`transition-transform duration-200 ${active ? "scale-110" : ""}`}
         />
       </div>
       <span
-        className="text-[11px] font-bold tracking-wide transition-colors duration-200"
+        className="text-[10px] font-bold tracking-wide transition-colors duration-200"
         style={{
           color: active ? "var(--primary)" : "rgba(255,255,255,0.52)",
           textShadow: active ? "0 0 8px oklch(0.65 0.26 22 / 55%)" : undefined,
@@ -123,7 +114,6 @@ function NavBtn({
       >
         {label}
       </span>
-      {/* Active indicator dot */}
       <div
         className="w-1 h-1 rounded-full transition-all duration-300"
         style={{
