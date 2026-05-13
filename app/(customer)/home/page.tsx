@@ -7,6 +7,8 @@ import { TodayRanking } from "@/components/customer/TodayRanking";
 import { LiveAtStore } from "@/components/customer/LiveAtStore";
 import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2 } from "lucide-react";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
+import { fetchAchievementProgress } from "@/lib/utils/autoAchievements";
+import { calcAchievementRank } from "@/lib/utils/achievementRank";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,7 +36,7 @@ export default async function HomePage() {
   const adminClient = createAdminClient();
   const businessDayTs = getBusinessDayStartUTC().getTime();
 
-  const [{ data }, { data: notices }, { data: quizAnswer }] = await Promise.all([
+  const [{ data }, { data: notices }, { data: quizAnswer }, { earnedPts, totalPts }] = await Promise.all([
     adminClient
       .from("users")
       .select("nickname, chip_balance, point_balance, total_visit_count, ranks(name)")
@@ -52,7 +54,10 @@ export default async function HomePage() {
       .eq("user_id", user.id)
       .eq("business_day_ts", businessDayTs)
       .maybeSingle(),
+    fetchAchievementProgress(user.id),
   ]);
+
+  const { rank: achievementRank, pct: achievementPct } = calcAchievementRank(earnedPts, totalPts);
 
   const userData       = data as UserWithRank | null;
   const rankName       = userData?.ranks?.name ?? null;
@@ -90,6 +95,8 @@ export default async function HomePage() {
         nickname={userData?.nickname ?? ""}
         rankName={rankName}
         userId={user.id}
+        achievementRankKey={achievementRank.key}
+        achievementPct={achievementPct}
       />
 
       {/* Action buttons */}

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { haversineMeters, getStoreLocationConfig } from "@/lib/utils/geo";
+import { checkAutoAchievements } from "@/lib/utils/autoAchievements";
 
 // R-201〜R-206: チェックインルール
 export async function POST(request: NextRequest) {
@@ -97,6 +98,9 @@ export async function POST(request: NextRequest) {
     type: "checkin",
     memo: "チェックインポイント",
   });
+
+  // 自動アチーブメントチェック（エラーは握りつぶし）
+  await checkAutoAchievements(user.id, "checkin");
 
   return NextResponse.json({ success: true, bonus: checkinBonus, pointBonus: POINT_BONUS });
 }

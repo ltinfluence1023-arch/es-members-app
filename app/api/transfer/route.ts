@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { checkAutoAchievements } from "@/lib/utils/autoAchievements";
 
 const transferSchema = z.object({
   token: z.string().uuid(),
@@ -121,6 +122,8 @@ export async function POST(request: NextRequest) {
     .from("qr_tokens")
     .update({ used_at: new Date().toISOString() })
     .eq("token", token);
+
+  await checkAutoAchievements(user.id, "transfer");
 
   return NextResponse.json({
     success: true,

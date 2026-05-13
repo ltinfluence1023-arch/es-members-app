@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AdminChipOp } from "@/components/admin/AdminChipOp";
 import { AdminPointOp } from "@/components/admin/AdminPointOp";
 import { CustomerDeleteButton } from "@/components/admin/CustomerDeleteButton";
+import { AdminAchievementGrant } from "@/components/admin/AdminAchievementGrant";
 
 export default async function AdminCustomerDetailPage({
   params,
@@ -181,6 +182,11 @@ export default async function AdminCustomerDetailPage({
             💎 ポイント操作はマスター権限のみ
           </div>
         )}
+      </div>
+
+      {/* アチーブメント付与 */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <AdminAchievementGrant userId={typedUser.id} />
       </div>
 
       {/* Chip history */}

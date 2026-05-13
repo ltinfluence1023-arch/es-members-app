@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { type AchievementRankKey, getRankStyleByKey } from "@/lib/utils/achievementRank";
 
 interface RankStyle {
   gradient: string;
@@ -72,16 +73,21 @@ interface Props {
   nickname: string;
   rankName: string | null | undefined;
   userId: string;
+  achievementRankKey?: AchievementRankKey;
+  achievementPct?: number;
 }
 
 const RESERVATION_URL = "https://booking.ebica.jp/webrsv/vacant/e014040501/18515?isfixshop=true&affiid=glb";
 
-export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, rankName, userId }: Props) {
+export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, rankName, userId, achievementRankKey, achievementPct }: Props) {
   const [chips, setChips] = useState(chipBalance);
   const [points, setPoints] = useState(pointBalance);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const style = getRankStyle(rankName);
+  // アチーブメントランクがあれば優先、なければ来店数ランクにフォールバック
+  const style = achievementRankKey
+    ? { ...getRankStyleByKey(achievementRankKey), label: `${getRankStyleByKey(achievementRankKey).label} ${achievementPct ?? 0}%` }
+    : getRankStyle(rankName);
 
   const memberId = `#${userId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
 

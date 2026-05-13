@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { checkAutoAchievements } from "@/lib/utils/autoAchievements";
 
 const schema = z.object({
   nickname: z.string().min(1).max(20).optional(),
@@ -31,6 +32,8 @@ export async function POST(request: NextRequest) {
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (nickname) await checkAutoAchievements(user.id, "profile");
 
   return NextResponse.json({ success: true });
 }

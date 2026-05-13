@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz";
+export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz" | "achievement";
 export type FeeSource = "transfer_fee" | "rake" | "manual_add" | "manual_subtract";
 export type PointTransactionType =
   | "accounting_reward"
@@ -479,6 +479,50 @@ export interface Database {
           answered_at?: string;
         };
         Update: { chip_awarded?: boolean };
+        Relationships: [];
+      };
+      achievements: {
+        Row: {
+          id: string; code: string; name: string; description: string;
+          category: string; difficulty: number; points: number;
+          chip_reward: number; track_type: string; is_active: boolean;
+          sort_order: number; created_at: string;
+        };
+        Insert: {
+          id?: string; code: string; name: string; description: string;
+          category: string; difficulty: number; points?: number;
+          chip_reward?: number; track_type: string; is_active?: boolean;
+          sort_order?: number; created_at?: string;
+        };
+        Update: { points?: number; chip_reward?: number; is_active?: boolean; sort_order?: number; };
+        Relationships: [];
+      };
+      user_achievements: {
+        Row: {
+          id: string; user_id: string; achievement_id: string;
+          granted_by: string | null; note: string | null; achieved_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; achievement_id: string;
+          granted_by?: string | null; note?: string | null; achieved_at?: string;
+        };
+        Update: { note?: string | null };
+        Relationships: [];
+      };
+      achievement_claims: {
+        Row: {
+          id: string; user_id: string; achievement_id: string;
+          proof_url: string | null; message: string | null;
+          status: string; reviewed_by: string | null;
+          review_note: string | null; claimed_at: string; reviewed_at: string | null;
+        };
+        Insert: {
+          id?: string; user_id: string; achievement_id: string;
+          proof_url?: string | null; message?: string | null;
+          status?: string; reviewed_by?: string | null;
+          review_note?: string | null; claimed_at?: string; reviewed_at?: string | null;
+        };
+        Update: { status?: string; reviewed_by?: string | null; review_note?: string | null; reviewed_at?: string | null; };
         Relationships: [];
       };
       fee_transactions: {
