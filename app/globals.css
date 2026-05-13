@@ -176,6 +176,50 @@
   50%       { opacity: 0.80; filter: drop-shadow(0 0 30px rgba(255,255,255,0.42)); }
 }
 
+/* ────── ユーザーアイコン浮遊（X・Y両方向） ────── */
+@keyframes wander-1 {
+  0%   { transform: translate(  0px,   0px); }
+  20%  { transform: translate( 12px,  -9px); }
+  45%  { transform: translate(  5px, -16px); }
+  65%  { transform: translate(-10px, -11px); }
+  85%  { transform: translate( -4px,  -4px); }
+  100% { transform: translate(  0px,   0px); }
+}
+@keyframes wander-2 {
+  0%   { transform: translate(  0px,   0px); }
+  25%  { transform: translate(-13px,  -7px); }
+  55%  { transform: translate( -5px, -15px); }
+  80%  { transform: translate( 11px,  -9px); }
+  100% { transform: translate(  0px,   0px); }
+}
+@keyframes wander-3 {
+  0%   { transform: translate(  0px,   0px); }
+  30%  { transform: translate( 10px, -13px); }
+  60%  { transform: translate(-12px,  -8px); }
+  85%  { transform: translate(  6px,  -5px); }
+  100% { transform: translate(  0px,   0px); }
+}
+@keyframes wander-4 {
+  0%   { transform: translate(  0px,   0px); }
+  20%  { transform: translate( -9px, -11px); }
+  50%  { transform: translate( 14px,  -6px); }
+  75%  { transform: translate(  7px, -15px); }
+  100% { transform: translate(  0px,   0px); }
+}
+@keyframes wander-5 {
+  0%   { transform: translate(  0px,   0px); }
+  35%  { transform: translate(  8px, -17px); }
+  70%  { transform: translate(-11px,  -5px); }
+  100% { transform: translate(  0px,   0px); }
+}
+@keyframes wander-6 {
+  0%   { transform: translate(  0px,   0px); }
+  28%  { transform: translate( -7px, -13px); }
+  55%  { transform: translate( 13px,  -8px); }
+  80%  { transform: translate(  4px, -17px); }
+  100% { transform: translate(  0px,   0px); }
+}
+
 /* ────── ベーススタイル ────── */
 @layer base {
   * { @apply border-border outline-ring/50; }

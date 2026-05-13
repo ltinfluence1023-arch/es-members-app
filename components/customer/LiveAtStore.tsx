@@ -20,20 +20,20 @@ interface Data {
   myId: string;
 }
 
-// ユーザーが浮遊するオービット位置（ロゴ中央を避けた配置）
+// ユーザーが浮遊するオービット位置 — 各自異なる wander アニメーション
 const ORBITS = [
-  { top: "5%",  left: "4%",  dur: 3.8, delay: 0.0 },
-  { top: "3%",  left: "40%", dur: 4.2, delay: 0.7 },
-  { top: "5%",  left: "76%", dur: 3.6, delay: 1.4 },
-  { top: "42%", left: "1%",  dur: 4.0, delay: 0.3 },
-  { top: "40%", left: "82%", dur: 3.7, delay: 1.1 },
-  { top: "72%", left: "6%",  dur: 4.3, delay: 0.9 },
-  { top: "74%", left: "42%", dur: 3.9, delay: 0.5 },
-  { top: "72%", left: "76%", dur: 4.1, delay: 1.6 },
-  { top: "22%", left: "2%",  dur: 3.7, delay: 0.4 },
-  { top: "20%", left: "82%", dur: 4.0, delay: 1.2 },
-  { top: "60%", left: "2%",  dur: 3.9, delay: 0.8 },
-  { top: "58%", left: "80%", dur: 4.2, delay: 1.5 },
+  { top: "5%",  left: "4%",  anim: "wander-1", dur: 7.5, delay: 0.0 },
+  { top: "3%",  left: "40%", anim: "wander-2", dur: 9.0, delay: 0.7 },
+  { top: "5%",  left: "76%", anim: "wander-3", dur: 7.0, delay: 1.4 },
+  { top: "42%", left: "1%",  anim: "wander-4", dur: 8.5, delay: 0.3 },
+  { top: "40%", left: "82%", anim: "wander-5", dur: 7.8, delay: 1.1 },
+  { top: "72%", left: "6%",  anim: "wander-6", dur: 9.2, delay: 0.9 },
+  { top: "74%", left: "42%", anim: "wander-1", dur: 8.0, delay: 0.5 },
+  { top: "72%", left: "76%", anim: "wander-2", dur: 7.3, delay: 1.6 },
+  { top: "22%", left: "2%",  anim: "wander-3", dur: 8.8, delay: 0.4 },
+  { top: "20%", left: "82%", anim: "wander-4", dur: 7.6, delay: 1.2 },
+  { top: "60%", left: "2%",  anim: "wander-5", dur: 9.5, delay: 0.8 },
+  { top: "58%", left: "80%", anim: "wander-6", dur: 8.2, delay: 1.5 },
 ];
 
 // 背景の浮遊パーティクル
@@ -205,9 +205,9 @@ export function LiveAtStore() {
               href={`/profile/${u.id}`}
               className="absolute flex flex-col items-center gap-1 group"
               style={{
-                top:   orbit.top,
-                left:  orbit.left,
-                animation: `float ${orbit.dur}s ease-in-out infinite`,
+                top:           orbit.top,
+                left:          orbit.left,
+                animation:     `${orbit.anim} ${orbit.dur}s ease-in-out infinite`,
                 animationDelay: `${orbit.delay}s`,
               }}
             >
