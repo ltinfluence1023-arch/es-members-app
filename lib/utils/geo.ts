@@ -1,0 +1,41 @@
+/**
+ * Haversine distance between two GPS coordinates, in meters.
+ */
+export function haversineMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6_371_000; // Earth radius in meters
+  const toRad = (d: number) => (d * Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * Read store location config from env vars.
+ * Returns null if not configured (location check disabled).
+ */
+export function getStoreLocationConfig(): {
+  lat: number;
+  lng: number;
+  radiusM: number;
+} | null {
+  const latStr = process.env.STORE_LAT;
+  const lngStr = process.env.STORE_LNG;
+  if (!latStr || !lngStr) return null;
+
+  const lat = parseFloat(latStr);
+  const lng = parseFloat(lngStr);
+  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
+  const radiusM = parseInt(process.env.STORE_RADIUS_M ?? "100", 10);
+  return { lat, lng, radiusM: Number.isFinite(radiusM) && radiusM > 0 ? radiusM : 100 };
+}

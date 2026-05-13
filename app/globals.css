@@ -1,26 +1,304 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --color-chip: var(--chip);
+  --color-point: var(--point);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* ────── ベースカラー（高コントラスト・ゲーミング） ────── */
+  --background: oklch(0.055 0.012 22);     /* よりディープブラック */
+  --foreground: oklch(0.97 0.006 60);      /* よりブライトホワイト */
+
+  --card: oklch(0.115 0.014 22);
+  --card-foreground: oklch(0.97 0.006 60);
+  --popover: oklch(0.115 0.014 22);
+  --popover-foreground: oklch(0.97 0.006 60);
+
+  /* ────── 赤系統プライマリ（ビビッド） ────── */
+  --primary: oklch(0.63 0.26 22);          /* ビビッドクリムゾン */
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.17 0.014 22);
+  --secondary-foreground: oklch(0.97 0.006 60);
+
+  --muted: oklch(0.17 0.01 22);
+  --muted-foreground: oklch(0.74 0.014 40); /* 読みやすさUP */
+
+  --accent: oklch(0.19 0.014 22);
+  --accent-foreground: oklch(0.97 0.006 60);
+
+  --destructive: oklch(0.62 0.24 22);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(1 0 0 / 22%);            /* 枠線をはっきり */
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.63 0.26 22);
+
+  /* ────── チャート ────── */
+  --chart-1: oklch(0.60 0.22 22);
+  --chart-2: oklch(0.65 0.18 355);
+  --chart-3: oklch(0.50 0.16 30);
+  --chart-4: oklch(0.40 0.10 22);
+  --chart-5: oklch(0.28 0.06 22);
+
+  --radius: 0.75rem;
+
+  /* ────── サイドバー ────── */
+  --sidebar: oklch(0.09 0.012 22);
+  --sidebar-foreground: oklch(0.94 0.006 60);
+  --sidebar-primary: oklch(0.53 0.22 22);
+  --sidebar-primary-foreground: oklch(0.97 0 0);
+  --sidebar-accent: oklch(0.17 0.012 22);
+  --sidebar-accent-foreground: oklch(0.94 0.006 60);
+  --sidebar-border: oklch(1 0 0 / 7%);
+  --sidebar-ring: oklch(0.53 0.22 22);
+
+  /* ────── カスタムカラー ────── */
+  --chip:  oklch(0.70 0.26 22);   /* ビビッドクリムゾン (発光感) */
+  --point: oklch(0.72 0.22 355);  /* ホットピンク (区別用)       */
+
+  /* ────── 立体感シャドウ ＋ ネオングロー ────── */
+  --shadow-card:
+    0 2px 4px rgba(0,0,0,0.40),
+    0 6px 16px rgba(0,0,0,0.32),
+    0 14px 32px rgba(0,0,0,0.22);
+  --shadow-card-hover:
+    0 3px 6px rgba(0,0,0,0.45),
+    0 10px 24px rgba(0,0,0,0.36),
+    0 24px 56px rgba(0,0,0,0.26),
+    0 0 24px oklch(0.63 0.26 22 / 18%);
+  --shadow-hero:
+    0 2px 4px  rgba(0,0,0,0.45),
+    0 8px 24px rgba(0,0,0,0.40),
+    0 24px 64px rgba(0,0,0,0.28),
+    0 0 0 1px rgba(255,255,255,0.06) inset,
+    0 0 32px oklch(0.63 0.26 22 / 22%);
+  --shadow-neon: 0 0 18px oklch(0.65 0.26 22 / 60%), 0 0 36px oklch(0.55 0.26 22 / 35%);
+  --shadow-neon-strong: 0 0 24px oklch(0.65 0.26 22 / 75%), 0 0 48px oklch(0.55 0.26 22 / 50%);
+}
+
+/* ────── ページ遷移・インタラクションアニメーション ────── */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ────── 追加アニメーション ────── */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-150%) skewX(-15deg); }
+  100% { transform: translateX(300%) skewX(-15deg); }
+}
+@keyframes brightness-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.22); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes ring-expand {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+@keyframes border-glow-pulse {
+  0%, 100% { box-shadow: 0 0 14px oklch(0.65 0.26 22 / 40%), 0 0 28px oklch(0.55 0.26 22 / 20%); }
+  50%       { box-shadow: 0 0 28px oklch(0.65 0.26 22 / 70%), 0 0 56px oklch(0.55 0.26 22 / 40%); }
+}
+@keyframes number-pop {
+  from { opacity: 0; transform: scale(0.85) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes label-slide {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ────── ベーススタイル ────── */
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body {
+    @apply bg-background text-foreground text-[16px] tracking-[0.005em];
+    /* 赤いゲーミング・グラデーション背景 */
+    background-image:
+      radial-gradient(ellipse 80% 50% at 85% 10%, oklch(0.20 0.06 22 / 40%) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 15% 85%, oklch(0.16 0.05 350 / 35%) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, oklch(0.12 0.03 22 / 20%) 0%, transparent 70%);
+    background-attachment: fixed;
   }
+  html { @apply font-sans; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  h1, h2, h3, h4 { @apply tracking-tight; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ────── デザインユーティリティ ────── */
+@layer utilities {
+
+  /* ページ入場アニメーション */
+  .animate-page-in {
+    animation: page-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease both;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 0.06s;
+  }
+  .animate-scale-in {
+    animation: scale-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+  .animate-number-pop {
+    animation: number-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-label-slide {
+    animation: label-slide 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* ボタン・インタラクティブ要素 */
+  .interactive {
+    transition: transform 0.13s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.13s ease, box-shadow 0.18s ease;
+  }
+  .interactive:active {
+    transform: scale(0.96);
+    opacity: 0.82;
+  }
+
+  /* 通常カード（浮き上がり） */
+  .card-elevated {
+    background: linear-gradient(145deg, oklch(0.145 0.016 22) 0%, oklch(0.105 0.010 22) 100%);
+    box-shadow: var(--shadow-card);
+    border: 1px solid oklch(1 0 0 / 20%);
+    transition: box-shadow 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.28s ease;
+  }
+  .card-elevated:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-3px);
+    border-color: oklch(0.63 0.26 22 / 45%);
+  }
+  .card-elevated:active {
+    transform: translateY(0) scale(0.99);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* ヒーローカード（チップ残高） */
+  .card-hero {
+    box-shadow: var(--shadow-hero);
+    border: 1px solid oklch(1 0 0 / 18%);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    animation: border-glow-pulse 4s ease-in-out infinite;
+  }
+
+  /* ゲーミンググラデーション背景 */
+  .card-gaming {
+    background: linear-gradient(145deg, oklch(0.16 0.022 22) 0%, oklch(0.10 0.012 22) 100%);
+    border: 1px solid oklch(1 0 0 / 18%);
+  }
+
+  /* チップ・ポイントのネオングロー */
+  .glow-chip       { text-shadow: 0 0 14px oklch(0.70 0.26 22 / 70%), 0 0 28px oklch(0.55 0.26 22 / 40%); }
+  .glow-point      { text-shadow: 0 0 14px oklch(0.72 0.22 355 / 70%), 0 0 28px oklch(0.55 0.22 355 / 40%); }
+  .glow-primary    { box-shadow: var(--shadow-neon); }
+  .glow-primary-strong { box-shadow: var(--shadow-neon-strong); }
+
+  /* ナンバー輝度パルス（チップ残高など） */
+  .number-vivid {
+    animation: brightness-pulse 3s ease-in-out infinite;
+    display: inline-block;
+  }
+
+  /* ゲーミング見出し（赤いアクセントライン入り） */
+  .heading-gaming {
+    @apply font-black tracking-wider uppercase;
+    color: var(--foreground);
+    position: relative;
+    padding-left: 0.75rem;
+  }
+  .heading-gaming::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 65%;
+    background: linear-gradient(180deg, var(--primary) 0%, transparent 120%);
+    border-radius: 2px;
+  }
+
+  /* ゲーミングセクションラベル */
+  .label-gaming {
+    @apply text-[11px] font-black uppercase tracking-[0.22em];
+    color: var(--primary);
+    text-shadow: 0 0 8px oklch(0.65 0.26 22 / 40%);
+  }
+
+  /* QRボタン拡張リング */
+  .ring-expand {
+    animation: ring-expand 2s ease-out infinite;
+    pointer-events: none;
+  }
+
+  /* スクロールバー非表示 */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
