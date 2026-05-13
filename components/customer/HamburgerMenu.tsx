@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, User, Coins, Star, FileText, Shield, LogOut, ChevronRight, Gem } from "lucide-react";
+import { Menu, User, Coins, Star, FileText, Shield, LogOut, ChevronRight, Gem, HelpCircle } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -15,10 +15,11 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
-  { href: "/menu/profile", icon: User, label: "プロフィール" },
-  { href: "/history?tab=chip", icon: Coins, label: "チップ履歴" },
-  { href: "/history?tab=point", icon: Gem, label: "ポイント履歴" },
-  { href: "/menu/rank", icon: Star, label: "ランク詳細" },
+  { href: "/quiz",          icon: HelpCircle, label: "デイリークイズ" },
+  { href: "/menu/profile",  icon: User,       label: "プロフィール" },
+  { href: "/history?tab=chip",  icon: Coins,  label: "チップ履歴" },
+  { href: "/history?tab=point", icon: Gem,    label: "ポイント履歴" },
+  { href: "/menu/rank",     icon: Star,       label: "ランク詳細" },
 ];
 
 const legalItems = [

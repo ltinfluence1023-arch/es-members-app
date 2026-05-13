@@ -44,7 +44,8 @@ const baseNavGroups: NavGroup[] = [
   {
     label: "コンテンツ",
     items: [
-      { href: "/admin/notices", icon: Bell, label: "お知らせ" },
+      { href: "/admin/notices", icon: Bell,  label: "お知らせ" },
+      { href: "/admin/quiz",    icon: Spade, label: "デイリークイズ", masterOnly: true },
     ],
   },
 ];

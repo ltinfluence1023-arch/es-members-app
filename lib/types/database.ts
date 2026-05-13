@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw";
+export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz";
 export type FeeSource = "transfer_fee" | "rake" | "manual_add" | "manual_subtract";
 export type PointTransactionType =
   | "accounting_reward"
@@ -413,6 +413,72 @@ export interface Database {
           user_agent?: string | null;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      quiz_questions: {
+        Row: {
+          id: string;
+          question: string;
+          option_a: string;
+          option_b: string;
+          option_c: string;
+          option_d: string;
+          correct_option: "a" | "b" | "c" | "d";
+          is_active: boolean;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          question: string;
+          option_a: string;
+          option_b: string;
+          option_c: string;
+          option_d: string;
+          correct_option: "a" | "b" | "c" | "d";
+          is_active?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          question?: string;
+          option_a?: string;
+          option_b?: string;
+          option_c?: string;
+          option_d?: string;
+          correct_option?: "a" | "b" | "c" | "d";
+          is_active?: boolean;
+        };
+        Relationships: [];
+      };
+      daily_quiz_schedule: {
+        Row: { business_day_ts: number; question_id: string };
+        Insert: { business_day_ts: number; question_id: string };
+        Update: { question_id?: string };
+        Relationships: [];
+      };
+      quiz_answers: {
+        Row: {
+          id: string;
+          user_id: string;
+          question_id: string;
+          business_day_ts: number;
+          selected_option: "a" | "b" | "c" | "d";
+          is_correct: boolean;
+          chip_awarded: boolean;
+          answered_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          question_id: string;
+          business_day_ts: number;
+          selected_option: string;
+          is_correct: boolean;
+          chip_awarded?: boolean;
+          answered_at?: string;
+        };
+        Update: { chip_awarded?: boolean };
         Relationships: [];
       };
       fee_transactions: {
