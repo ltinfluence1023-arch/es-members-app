@@ -12,6 +12,7 @@ export type AuditCategory =
   | "staff"
   | "notice"
   | "quiz"
+  | "achievement"
   | "other";
 
 interface AuditEntry {

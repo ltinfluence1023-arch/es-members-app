@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
     .eq("id", achievementId)
     .single();
 
-  if (!ach?.is_active)              return NextResponse.json({ error: "このミッションは現在無効です" }, { status: 400 });
-  if (ach.track_type !== "user_claim") return NextResponse.json({ error: "申請不要のミッションです" }, { status: 400 });
+  if (!ach?.is_active)   return NextResponse.json({ error: "このミッションは現在無効です" }, { status: 400 });
+  if (ach.track_type === "auto") return NextResponse.json({ error: "自動達成ミッションは申請不要です" }, { status: 400 });
 
   // 画像アップロード（任意）
   let proofUrl: string | null = null;

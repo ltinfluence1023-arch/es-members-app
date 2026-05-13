@@ -288,11 +288,13 @@ export function AchievementsClient() {
                         )}
                       </div>
 
-                      {/* SNS申請フォーム */}
-                      {a.track_type === "user_claim" && !a.earned && a.claimStatus !== "pending" && (
+                      {/* 申請フォーム（auto以外・未達成・未申請） */}
+                      {a.track_type !== "auto" && !a.earned && a.claimStatus !== "pending" && (
                         <div className="space-y-2.5 pt-1">
                           <p className="text-[10px] text-muted-foreground">
-                            達成したら証拠画像を選択して申請してください。スタッフが確認後に承認します。
+                            {a.track_type === "staff_grant"
+                              ? "来店中に達成したら写真とコメントで申請してください。スタッフが確認後に承認します。"
+                              : "達成の証拠画像を選択して申請してください。スタッフが確認後に承認します。"}
                           </p>
 
                           {/* 隠しfile input */}
@@ -355,12 +357,6 @@ export function AchievementsClient() {
                         </div>
                       )}
 
-                      {/* スタッフ付与の案内 */}
-                      {a.track_type === "staff_grant" && !a.earned && (
-                        <p className="text-[10px] text-muted-foreground">
-                          スタッフが来店中に確認・付与します。達成したらスタッフに声をかけてみましょう！
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>

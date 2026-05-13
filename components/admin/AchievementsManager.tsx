@@ -14,8 +14,118 @@ interface Claim {
   id: string; user_id: string; achievement_id: string;
   proof_url: string | null; message: string | null;
   status: string; claimed_at: string; review_note: string | null;
-  achievements: { name: string; chip_reward: number } | null;
+  achievements: { name: string; chip_reward: number; track_type: string } | null;
   users: { nickname: string } | null;
+}
+
+const TRACK_TYPE_LABELS: Record<string, string> = {
+  staff_grant: "👨‍💼 スタッフ付与ミッション",
+  user_claim:  "📱 SNS申請ミッション",
+};
+
+function ClaimCard({
+  c,
+  onAction,
+}: {
+  c: Claim;
+  onAction: (id: string, action: "approved" | "rejected", note?: string) => Promise<void>;
+}) {
+  const [note,    setNote]    = useState("");
+  const [loading, setLoading] = useState<"approved" | "rejected" | null>(null);
+  const isImage = !!c.proof_url && /\.(jpg|jpeg|png|gif|webp|heic)/i.test(c.proof_url);
+
+  async function handle(action: "approved" | "rejected") {
+    setLoading(action);
+    await onAction(c.id, action, note || undefined);
+    setLoading(null);
+  }
+
+  return (
+    <div className="card-elevated rounded-xl overflow-hidden">
+      {/* ヘッダー */}
+      <div className="px-4 pt-4 pb-3 space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-bold leading-tight">{c.achievements?.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {c.users?.nickname} 様
+              {c.achievements?.track_type && (
+                <span className="ml-2 opacity-70">{TRACK_TYPE_LABELS[c.achievements.track_type]}</span>
+              )}
+            </p>
+          </div>
+          <span className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+            style={{ background: "oklch(0.65 0.18 60 / 15%)", color: "#facc15", border: "1px solid oklch(0.65 0.18 60 / 30%)" }}>
+            審査中
+          </span>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          {new Date(c.claimed_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+        </p>
+      </div>
+
+      {/* 証拠画像 */}
+      {c.proof_url && (
+        <div className="px-4 pb-3">
+          {isImage ? (
+            <a href={c.proof_url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={c.proof_url}
+                alt="証拠画像"
+                className="w-full rounded-xl object-cover border border-border"
+                style={{ maxHeight: "220px" }}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1 text-center">タップで拡大</p>
+            </a>
+          ) : (
+            <a href={c.proof_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-primary underline break-all">
+              {c.proof_url}
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* メッセージ */}
+      {c.message && (
+        <div className="px-4 pb-3">
+          <p className="text-xs text-muted-foreground px-3 py-2 rounded-lg bg-secondary">
+            「{c.message}」
+          </p>
+        </div>
+      )}
+
+      {/* 却下メモ入力 */}
+      <div className="px-4 pb-3">
+        <input
+          className="w-full rounded-lg bg-secondary border border-border text-xs px-3 py-2 focus:outline-none focus:border-primary"
+          placeholder="却下メモ・コメント（任意）"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+
+      {/* 承認・却下ボタン */}
+      <div className="px-4 pb-4 flex gap-2">
+        <button
+          onClick={() => handle("approved")}
+          disabled={!!loading}
+          className="flex-1 py-2.5 rounded-xl text-sm font-black text-white interactive flex items-center justify-center gap-1.5"
+          style={{ background: "oklch(0.55 0.18 145)", boxShadow: "0 0 12px oklch(0.55 0.18 145 / 30%)" }}
+        >
+          {loading === "approved" ? <Loader2 size={14} className="animate-spin" /> : "✓"} 承認
+        </button>
+        <button
+          onClick={() => handle("rejected")}
+          disabled={!!loading}
+          className="flex-1 py-2.5 rounded-xl text-sm font-black text-white interactive flex items-center justify-center gap-1.5"
+          style={{ background: "var(--destructive)" }}
+        >
+          {loading === "rejected" ? <Loader2 size={14} className="animate-spin" /> : "✗"} 却下
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -189,36 +299,7 @@ export function AchievementsManager({ isMaster }: { isMaster: boolean }) {
             </div>
           )}
           {claims.filter((c) => c.status === "pending").map((c) => (
-            <div key={c.id} className="card-elevated rounded-xl p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-bold">{c.achievements?.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.users?.nickname} 様</p>
-                </div>
-                <span className="text-[10px] text-yellow-400 font-black bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/30">
-                  審査中
-                </span>
-              </div>
-              {c.proof_url && (
-                <a href={c.proof_url} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-primary underline break-all">
-                  証拠URL: {c.proof_url}
-                </a>
-              )}
-              {c.message && <p className="text-xs text-muted-foreground">「{c.message}」</p>}
-              <div className="flex gap-2">
-                <button onClick={() => handleClaim(c.id, "approved")}
-                  className="flex-1 py-2 rounded-lg text-xs font-bold text-white interactive"
-                  style={{ background: "oklch(0.55 0.18 145)" }}>
-                  承認
-                </button>
-                <button onClick={() => handleClaim(c.id, "rejected")}
-                  className="flex-1 py-2 rounded-lg text-xs font-bold interactive"
-                  style={{ background: "var(--destructive)", color: "white" }}>
-                  却下
-                </button>
-              </div>
-            </div>
+            <ClaimCard key={c.id} c={c} onAction={handleClaim} />
           ))}
           {/* 処理済みの申請 */}
           {claims.filter((c) => c.status !== "pending").length > 0 && (
