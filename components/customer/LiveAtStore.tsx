@@ -165,9 +165,10 @@ export function LiveAtStore() {
             src="/logo-white.png"
             alt="flair bar es"
             style={{
-              width: "180px",
-              filter: "drop-shadow(0 0 20px rgba(255,255,255,0.25))",
+              width: "155px",
+              height: "155px",
               objectFit: "contain",
+              filter: "drop-shadow(0 0 18px rgba(255,255,255,0.22))",
             }}
           />
         </div>
