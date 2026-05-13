@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChipCard } from "@/components/customer/ChipCard";
 import { TodayRanking } from "@/components/customer/TodayRanking";
 import { LiveAtStore } from "@/components/customer/LiveAtStore";
+import { ActivityFeed, type ActivityEvent } from "@/components/customer/ActivityFeed";
 import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2, Trophy } from "lucide-react";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
 import { fetchAchievementProgress } from "@/lib/utils/autoAchievements";
@@ -33,10 +34,19 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const adminClient = createAdminClient();
-  const businessDayTs = getBusinessDayStartUTC().getTime();
+  const adminClient     = createAdminClient();
+  const businessDayStart = getBusinessDayStartUTC();
+  const businessDayTs   = businessDayStart.getTime();
 
-  const [{ data }, { data: notices }, { data: quizAnswer }, { earnedPts, totalPts }] = await Promise.all([
+  const [
+    { data: userData },
+    { data: notices },
+    { data: myQuizAnswer },
+    { earnedPts, totalPts },
+    { data: visitRows },
+    { data: quizCorrectRows },
+    { data: achievementRows },
+  ] = await Promise.all([
     adminClient
       .from("users")
       .select("nickname, chip_balance, point_balance, total_visit_count, ranks(name)")
@@ -48,6 +58,7 @@ export default async function HomePage() {
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .limit(1),
+    // 自分の本日のクイズ回答
     adminClient
       .from("quiz_answers")
       .select("id, is_correct")
@@ -55,15 +66,86 @@ export default async function HomePage() {
       .eq("business_day_ts", businessDayTs)
       .maybeSingle(),
     fetchAchievementProgress(user.id),
+    // アクティビティ: 本日チェックイン
+    adminClient
+      .from("visits")
+      .select("user_id, checked_in_at")
+      .gte("checked_in_at", businessDayStart.toISOString())
+      .order("checked_in_at", { ascending: false })
+      .limit(8),
+    // アクティビティ: 本日クイズ正解
+    adminClient
+      .from("quiz_answers")
+      .select("user_id, answered_at")
+      .eq("business_day_ts", businessDayTs)
+      .eq("is_correct", true)
+      .order("answered_at", { ascending: false })
+      .limit(8),
+    // アクティビティ: 本日アチーブメント達成
+    adminClient
+      .from("user_achievements")
+      .select("user_id, achieved_at, achievement_id")
+      .gte("achieved_at", businessDayStart.toISOString())
+      .order("achieved_at", { ascending: false })
+      .limit(8),
   ]);
 
-  const { rank: achievementRank, pct: achievementPct } = calcAchievementRank(earnedPts, totalPts);
+  // ── アクティビティ: ユーザー情報をまとめて取得 ──────────────
+  const allUserIds = [...new Set([
+    ...(visitRows        ?? []).map((r) => r.user_id),
+    ...(quizCorrectRows  ?? []).map((r) => r.user_id),
+    ...(achievementRows  ?? []).map((r) => r.user_id),
+  ])];
 
-  const userData       = data as UserWithRank | null;
-  const rankName       = userData?.ranks?.name ?? null;
+  const achievementIds = [...new Set((achievementRows ?? []).map((r) => r.achievement_id))];
+
+  const [{ data: activityUsers }, { data: achievementDetails }] = await Promise.all([
+    allUserIds.length > 0
+      ? adminClient.from("users").select("id, nickname, avatar_url").in("id", allUserIds)
+      : Promise.resolve({ data: [] }),
+    achievementIds.length > 0
+      ? adminClient.from("achievements").select("id, name").in("id", achievementIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const userMap = new Map((activityUsers ?? []).map((u) => [u.id, u]));
+  const achMap  = new Map((achievementDetails ?? []).map((a) => [a.id, a.name]));
+
+  const activityEvents: ActivityEvent[] = [
+    ...(visitRows ?? []).map((r) => ({
+      type:      "checkin" as const,
+      userId:    r.user_id,
+      nickname:  userMap.get(r.user_id)?.nickname ?? "—",
+      avatarUrl: userMap.get(r.user_id)?.avatar_url ?? null,
+      detail:    "チェックイン",
+      timestamp: r.checked_in_at,
+    })),
+    ...(quizCorrectRows ?? []).map((r) => ({
+      type:      "quiz" as const,
+      userId:    r.user_id,
+      nickname:  userMap.get(r.user_id)?.nickname ?? "—",
+      avatarUrl: userMap.get(r.user_id)?.avatar_url ?? null,
+      detail:    "クイズに正解！",
+      timestamp: r.answered_at,
+    })),
+    ...(achievementRows ?? []).map((r) => ({
+      type:      "achievement" as const,
+      userId:    r.user_id,
+      nickname:  userMap.get(r.user_id)?.nickname ?? "—",
+      avatarUrl: userMap.get(r.user_id)?.avatar_url ?? null,
+      detail:    `「${achMap.get(r.achievement_id) ?? "ミッション"}」を達成！`,
+      timestamp: r.achieved_at,
+    })),
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+   .slice(0, 12);
+
+  // ── 既存データ ───────────────────────────────────────────
+  const typedUser      = userData as UserWithRank | null;
+  const rankName       = typedUser?.ranks?.name ?? null;
   const latestNotice   = notices?.[0] ?? null;
-  const quizCompleted  = !!quizAnswer;
-  const quizCorrect    = quizAnswer?.is_correct ?? false;
+  const quizCompleted  = !!myQuizAnswer;
+  const myQuizCorrect  = myQuizAnswer?.is_correct ?? false;
+  const { rank: achievementRank, pct: achievementPct } = calcAchievementRank(earnedPts, totalPts);
 
   return (
     <div className="px-4 py-4 space-y-4 animate-page-in">
@@ -89,10 +171,10 @@ export default async function HomePage() {
 
       {/* Chip + Point card */}
       <ChipCard
-        chipBalance={userData?.chip_balance ?? 0}
-        pointBalance={userData?.point_balance ?? 0}
-        visitCount={userData?.total_visit_count ?? 0}
-        nickname={userData?.nickname ?? ""}
+        chipBalance={typedUser?.chip_balance ?? 0}
+        pointBalance={typedUser?.point_balance ?? 0}
+        visitCount={typedUser?.total_visit_count ?? 0}
+        nickname={typedUser?.nickname ?? ""}
         rankName={rankName}
         userId={user.id}
         achievementRankKey={achievementRank.key}
@@ -103,17 +185,12 @@ export default async function HomePage() {
       <div className="space-y-2.5 pt-1">
         <p className="label-gaming">menu</p>
 
-        {/* デイリークイズ — 完了ステータス表示 */}
+        {/* デイリークイズ */}
         <Link href="/quiz" className="block interactive">
           <div
             className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
-            style={{
-              borderColor: quizCompleted
-                ? "oklch(0.55 0.18 145 / 35%)"
-                : "oklch(0.63 0.26 22 / 40%)",
-            }}
+            style={{ borderColor: quizCompleted ? "oklch(0.55 0.18 145 / 35%)" : "oklch(0.63 0.26 22 / 40%)" }}
           >
-            {/* アイコン */}
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{
@@ -127,34 +204,25 @@ export default async function HomePage() {
                 ? <CheckCircle2 size={20} style={{ color: "#4ade80" }} />
                 : <HelpCircle   size={20} className="text-white" />}
             </div>
-
-            {/* テキスト */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold leading-tight">デイリークイズ</p>
               <p className="text-xs leading-tight mt-0.5" style={{ color: "var(--muted-foreground)" }}>
                 {quizCompleted
-                  ? quizCorrect ? "正解！ +10チップ獲得済み 🎉" : "本日回答済み"
+                  ? myQuizCorrect ? "正解！ +10チップ獲得済み 🎉" : "本日回答済み"
                   : "毎日1問・正解で +10チップ"}
               </p>
             </div>
-
-            {/* ステータスバッジ */}
             {quizCompleted ? (
-              <span
-                className="text-[10px] font-black px-2.5 py-1 rounded-full flex-shrink-0"
-                style={{ background: "oklch(0.55 0.18 145 / 20%)", color: "#4ade80", border: "1px solid oklch(0.55 0.18 145 / 35%)" }}
-              >
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full flex-shrink-0"
+                style={{ background: "oklch(0.55 0.18 145 / 20%)", color: "#4ade80", border: "1px solid oklch(0.55 0.18 145 / 35%)" }}>
                 完了
               </span>
             ) : (
-              <span
-                className="text-[10px] font-black px-2.5 py-1 rounded-full flex-shrink-0 animate-pulse"
-                style={{ background: "oklch(0.63 0.26 22 / 20%)", color: "var(--primary)", border: "1px solid oklch(0.63 0.26 22 / 45%)" }}
-              >
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full flex-shrink-0 animate-pulse"
+                style={{ background: "oklch(0.63 0.26 22 / 20%)", color: "var(--primary)", border: "1px solid oklch(0.63 0.26 22 / 45%)" }}>
                 未了
               </span>
             )}
-
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>
         </Link>
@@ -165,7 +233,6 @@ export default async function HomePage() {
             className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
             style={{ borderColor: "oklch(0.63 0.26 22 / 30%)" }}
           >
-            {/* アイコン */}
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{
@@ -177,8 +244,6 @@ export default async function HomePage() {
             >
               <Trophy size={20} style={{ color: earnedPts > 0 ? "#facc15" : "rgba(255,255,255,0.4)" }} />
             </div>
-
-            {/* テキスト＋プログレスバー */}
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold leading-tight">アチーブメント</p>
@@ -201,12 +266,11 @@ export default async function HomePage() {
                 </span>
               </div>
             </div>
-
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>
         </Link>
 
-        {/* その他アクションボタン（4列グリッド） */}
+        {/* 4列グリッド */}
         <div className="grid grid-cols-4 gap-2.5">
           {ACTION_BUTTONS.map(({ icon: Icon, label, href }) => (
             <Link key={href} href={href} className="flex flex-col items-center gap-1.5 interactive group">
@@ -230,6 +294,9 @@ export default async function HomePage() {
           ))}
         </div>
       </div>
+
+      {/* Today's activity feed */}
+      <ActivityFeed events={activityEvents} />
 
       {/* Live at store */}
       <div className="pt-2">
