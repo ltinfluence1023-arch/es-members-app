@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Loader2, Send, Lock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, Loader2, Send, Lock, ImagePlus, X } from "lucide-react";
 import { calcAchievementRank, ACHIEVEMENT_RANKS } from "@/lib/utils/achievementRank";
 
 interface Achievement {
@@ -52,9 +52,12 @@ function StatusBadge({ a }: { a: Achievement }) {
 export function AchievementsClient() {
   const [data, setData]     = useState<{ achievements: Achievement[]; earnedPts: number; totalPts: number } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [claiming, setClaiming] = useState<string | null>(null);
-  const [claimInputs, setClaimInputs] = useState<Record<string, { url: string; msg: string }>>({});
+  const [expanded,      setExpanded]      = useState<string | null>(null);
+  const [claiming,      setClaiming]      = useState<string | null>(null);
+  const [claimFiles,    setClaimFiles]    = useState<Record<string, File | null>>({});
+  const [claimMessages, setClaimMessages] = useState<Record<string, string>>({});
+  const [previews,      setPreviews]      = useState<Record<string, string>>({});
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     fetch("/api/achievements")
@@ -63,14 +66,22 @@ export function AchievementsClient() {
       .finally(() => setLoading(false));
   }, []);
 
+  function handleFileChange(id: string, file: File | null) {
+    setClaimFiles((p) => ({ ...p, [id]: file }));
+    if (previews[id]) URL.revokeObjectURL(previews[id]);
+    if (file) setPreviews((p) => ({ ...p, [id]: URL.createObjectURL(file) }));
+    else      setPreviews((p) => { const n = { ...p }; delete n[id]; return n; });
+  }
+
   async function handleClaim(id: string) {
     setClaiming(id);
-    const input = claimInputs[id] ?? { url: "", msg: "" };
-    await fetch("/api/achievements/claim", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ achievement_id: id, proof_url: input.url, message: input.msg }),
-    });
+    const fd = new FormData();
+    fd.append("achievement_id", id);
+    fd.append("message", claimMessages[id] ?? "");
+    const file = claimFiles[id];
+    if (file) fd.append("file", file);
+
+    await fetch("/api/achievements/claim", { method: "POST", body: fd });
     const res = await fetch("/api/achievements");
     setData(await res.json());
     setClaiming(null);
@@ -279,29 +290,66 @@ export function AchievementsClient() {
 
                       {/* SNS申請フォーム */}
                       {a.track_type === "user_claim" && !a.earned && a.claimStatus !== "pending" && (
-                        <div className="space-y-2 pt-1">
+                        <div className="space-y-2.5 pt-1">
                           <p className="text-[10px] text-muted-foreground">
-                            達成したら証拠URLとともに申請してください。スタッフが確認後に承認します。
+                            達成したら証拠画像を選択して申請してください。スタッフが確認後に承認します。
                           </p>
+
+                          {/* 隠しfile input */}
                           <input
-                            className="w-full rounded-lg bg-secondary border border-border text-xs px-3 py-2 focus:outline-none focus:border-primary"
-                            placeholder="証拠URL（投稿URL・スクリーンショットURL）"
-                            value={claimInputs[a.id]?.url ?? ""}
-                            onChange={(e) => setClaimInputs((p) => ({ ...p, [a.id]: { ...p[a.id], url: e.target.value } }))}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            ref={(el) => { fileRefs.current[a.id] = el; }}
+                            onChange={(e) => handleFileChange(a.id, e.target.files?.[0] ?? null)}
                           />
+
+                          {/* 画像プレビュー or 選択ボタン */}
+                          {previews[a.id] ? (
+                            <div className="relative">
+                              <img
+                                src={previews[a.id]}
+                                alt="証拠画像"
+                                className="w-full rounded-xl object-cover"
+                                style={{ maxHeight: "160px" }}
+                              />
+                              <button
+                                onClick={() => handleFileChange(a.id, null)}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center"
+                                style={{ background: "rgba(0,0,0,0.6)" }}
+                              >
+                                <X size={12} className="text-white" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => fileRefs.current[a.id]?.click()}
+                              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-xs font-bold interactive"
+                              style={{ borderColor: "oklch(1 0 0 / 18%)", color: "var(--muted-foreground)" }}
+                            >
+                              <ImagePlus size={16} />
+                              写真を選択
+                            </button>
+                          )}
+
+                          {/* メッセージ */}
                           <input
                             className="w-full rounded-lg bg-secondary border border-border text-xs px-3 py-2 focus:outline-none focus:border-primary"
                             placeholder="一言メッセージ（任意）"
-                            value={claimInputs[a.id]?.msg ?? ""}
-                            onChange={(e) => setClaimInputs((p) => ({ ...p, [a.id]: { ...p[a.id], msg: e.target.value } }))}
+                            value={claimMessages[a.id] ?? ""}
+                            onChange={(e) => setClaimMessages((p) => ({ ...p, [a.id]: e.target.value }))}
                           />
+
+                          {/* 申請ボタン */}
                           <button
                             onClick={() => handleClaim(a.id)}
                             disabled={claiming === a.id}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white interactive"
+                            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white interactive"
                             style={{ background: "var(--primary)", boxShadow: "var(--shadow-neon)" }}
                           >
-                            {claiming === a.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                            {claiming === a.id
+                              ? <Loader2 size={12} className="animate-spin" />
+                              : <Send size={12} />}
                             達成を申請する
                           </button>
                         </div>
