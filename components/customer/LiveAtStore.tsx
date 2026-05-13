@@ -155,22 +155,22 @@ export function LiveAtStore() {
           />
         ))}
 
-        {/* 中央ロゴ */}
-        {/* ← public/logo-white.png を追加したら自動で表示されます */}
-        <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
-          style={{ opacity: isEmpty ? 0.55 : 0.20 }}
-        >
-          <img
-            src="/logo-white.png"
-            alt="flair bar es"
-            style={{
-              width: "155px",
-              height: "155px",
-              objectFit: "contain",
-              filter: "drop-shadow(0 0 18px rgba(255,255,255,0.22))",
-            }}
-          />
+        {/* 中央ロゴ — ふわふわ浮遊 + グロー呼吸 */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <div style={{ animation: "float 8s ease-in-out infinite", animationDelay: "0.4s" }}>
+            <img
+              src="/logo-white.png"
+              alt="flair bar es"
+              style={{
+                width: "155px",
+                height: "155px",
+                objectFit: "contain",
+                opacity: isEmpty ? 0.55 : 0.22,
+                animation: "logo-breathe 5s ease-in-out infinite",
+                animationDelay: "1s",
+              }}
+            />
+          </div>
         </div>
 
         {/* 空の状態 */}
