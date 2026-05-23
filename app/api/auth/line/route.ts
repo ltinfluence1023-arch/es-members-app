@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       email:         syntheticEmail,
       password:      initialPassword,
       email_confirm: true,
-      user_metadata: { line_user_id: lineUserId, line_display_name: displayName },
+      user_metadata: { line_user_id: lineUserId, line_display_name: displayName, line_picture_url: pictureUrl },
     });
 
     if (createErr) {

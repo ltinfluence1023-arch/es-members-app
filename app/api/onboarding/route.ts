@@ -39,8 +39,9 @@ export async function POST(request: NextRequest) {
   //
   //   auth.users の user_metadata に LINE 情報を保存しているため、
   //   ここで public.users を再作成できる。
-  const lineUserId = user.user_metadata?.line_user_id  as string | undefined;
-  const nickname   = user.user_metadata?.line_display_name as string | undefined;
+  const lineUserId   = user.user_metadata?.line_user_id    as string | undefined;
+  const nickname     = user.user_metadata?.line_display_name as string | undefined;
+  const pictureUrl   = user.user_metadata?.line_picture_url  as string | undefined;
 
   const { error } = await adminClient
     .from("users")
@@ -48,9 +49,10 @@ export async function POST(request: NextRequest) {
       id:             user.id,
       birthday,
       // INSERT の場合に必要な必須フィールド（UPDATE 時は id 一致行だけが更新される）
-      nickname:       nickname       ?? "LINEユーザー",
-      email_or_phone: user.email     ?? `line_${user.id.slice(0, 8)}@line.local`,
-      line_user_id:   lineUserId     ?? null,
+      nickname:       nickname     ?? "LINEユーザー",
+      email_or_phone: user.email   ?? `line_${user.id.slice(0, 8)}@line.local`,
+      line_user_id:   lineUserId   ?? null,
+      avatar_url:     pictureUrl   ?? null,
     }, { onConflict: "id" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

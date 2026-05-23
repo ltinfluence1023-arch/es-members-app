@@ -18,13 +18,17 @@ export default async function CustomerLayout({
   if (user) {
     const adminClient = createAdminClient();
 
-    // 誕生日未設定ならオンボーディングへ（LINE 初回登録フロー）
-    const { data: profile } = await adminClient
-      .from("users")
-      .select("birthday")
-      .eq("id", user.id)
-      .single();
-    if (!profile?.birthday) redirect("/onboarding");
+    // LINE アカウント（合成メール line_*@line.local）のみ誕生日必須
+    // 既存のメール/パスワードユーザーは誕生日チェックをスキップ
+    const isLineAccount = /^line_.*@line\.local$/.test(user.email ?? "");
+    if (isLineAccount) {
+      const { data: profile } = await adminClient
+        .from("users")
+        .select("birthday")
+        .eq("id", user.id)
+        .single();
+      if (!profile?.birthday) redirect("/onboarding");
+    }
 
     const { data } = await adminClient
       .from("notices")
