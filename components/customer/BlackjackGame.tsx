@@ -83,11 +83,11 @@ function ScoreBadge({ score, hidden = false }: { score: number; hidden?: boolean
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CHIP_STYLES: Record<number, { bg: string; ring: string; text: string }> = {
-  50:   { bg: "oklch(0.38 0.14 230)", ring: "#60a5fa", text: "50" },
-  100:  { bg: "oklch(0.40 0.20 22)",  ring: "#f87171", text: "100" },
-  200:  { bg: "oklch(0.28 0.10 270)", ring: "#a78bfa", text: "200" },
-  500:  { bg: "oklch(0.36 0.13 145)", ring: "#4ade80", text: "500" },
-  1000: { bg: "oklch(0.35 0.12 60)",  ring: "#fbbf24", text: "1K" },
+  10:   { bg: "oklch(0.32 0.08 220)",  ring: "#7dd3fc", text: "10"  },
+  25:   { bg: "oklch(0.34 0.12 145)",  ring: "#4ade80", text: "25"  },
+  50:   { bg: "oklch(0.38 0.14 270)",  ring: "#a78bfa", text: "50"  },
+  75:   { bg: "oklch(0.36 0.14 55)",   ring: "#fbbf24", text: "75"  },
+  100:  { bg: "oklch(0.40 0.20 22)",   ring: "#f87171", text: "100" },
 };
 
 function ChipButton({ amount, selected, onClick, disabled }: {
