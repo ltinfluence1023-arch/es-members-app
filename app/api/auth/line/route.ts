@@ -6,7 +6,7 @@ import { z } from "zod";
 const schema = z.object({
   accessToken: z.string().min(1),
   displayName: z.string().optional(),
-  pictureUrl:  z.string().url().optional().or(z.literal("")),
+  pictureUrl:  z.string().optional(),   // URL バリデーション省略（LINE CDN 形式が .url() で弾かれる場合対策）
 });
 
 /**

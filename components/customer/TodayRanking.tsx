@@ -112,7 +112,7 @@ function RankRow({ e, highlight }: { e: Entry; highlight: boolean }) {
         )}
       </div>
 
-      <AvatarImage userId={e.userId} nickname={e.nickname} size={36} />
+      <AvatarImage userId={e.userId} nickname={e.nickname} src={e.avatarUrl} size={36} />
 
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-bold leading-tight truncate"

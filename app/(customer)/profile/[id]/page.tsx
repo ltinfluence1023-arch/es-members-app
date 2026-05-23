@@ -20,7 +20,7 @@ export default async function PublicProfilePage({
   const [{ data: profile }, { data: authUserData }] = await Promise.all([
     adminClient
       .from("users")
-      .select("id, nickname, chip_balance, point_balance, total_visit_count, rank_id, created_at")
+      .select("id, nickname, chip_balance, point_balance, total_visit_count, rank_id, created_at, avatar_url")
       .eq("id", id)
       .single(),
     adminClient.auth.admin.getUserById(id),
@@ -65,7 +65,7 @@ export default async function PublicProfilePage({
         <div className="h-20" style={{ background: "linear-gradient(135deg, oklch(0.25 0.06 22), oklch(0.18 0.03 22))" }} />
         <div className="px-5 pb-5 -mt-10 flex flex-col items-center text-center">
           <div className="ring-4 ring-card rounded-full mb-3">
-            <AvatarImage userId={profile.id} nickname={profile.nickname} size={80} />
+            <AvatarImage userId={profile.id} nickname={profile.nickname} src={profile.avatar_url} size={80} />
           </div>
           <h1 className="text-xl font-black">{profile.nickname}</h1>
           {rank && (

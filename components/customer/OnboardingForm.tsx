@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 interface Props {
@@ -69,13 +69,15 @@ export function OnboardingForm({ nickname, avatarUrl }: Props) {
         <div className="flex flex-col items-center mb-8 animate-fade-in">
           <div className="relative mb-3">
             {avatarUrl ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={avatarUrl}
                 alt={nickname}
                 width={80}
                 height={80}
                 className="rounded-full object-cover"
                 style={{
+                  width: 80, height: 80,
                   border: "2.5px solid var(--primary)",
                   boxShadow: "0 0 18px oklch(0.63 0.26 22 / 35%)",
                 }}

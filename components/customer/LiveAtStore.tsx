@@ -131,7 +131,7 @@ function FloatingUser({
               ? "0 0 16px oklch(0.65 0.26 22 / 50%), 0 4px 12px rgba(0,0,0,0.5)"
               : "0 4px 14px rgba(0,0,0,0.55)",
           }}>
-            <AvatarImage userId={u.id} nickname={u.nickname} size={48} />
+            <AvatarImage userId={u.id} nickname={u.nickname} src={u.avatarUrl} size={48} />
           </div>
 
           {/* オンラインドット */}

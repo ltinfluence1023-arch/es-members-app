@@ -43,7 +43,7 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
               <div key={i} className="flex items-center gap-3 px-3.5 py-2.5">
                 {/* アバター */}
                 <div className="relative flex-shrink-0">
-                  <AvatarImage userId={e.userId} nickname={e.nickname} size={36} />
+                  <AvatarImage userId={e.userId} nickname={e.nickname} src={e.avatarUrl} size={36} />
                   {/* イベント種別バッジ */}
                   <span
                     className="absolute -bottom-0.5 -right-0.5 text-[11px] leading-none"
