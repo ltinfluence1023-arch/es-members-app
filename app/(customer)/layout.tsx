@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/customer/BottomNav";
 import { HamburgerMenu } from "@/components/customer/HamburgerMenu";
 import { NoticeBell } from "@/components/customer/NoticeBell";
@@ -15,6 +16,15 @@ export default async function CustomerLayout({
   let noticeIds: string[] = [];
   if (user) {
     const adminClient = createAdminClient();
+
+    // 誕生日未設定ならオンボーディングへ（LINE 初回登録フロー）
+    const { data: profile } = await adminClient
+      .from("users")
+      .select("birthday")
+      .eq("id", user.id)
+      .single();
+    if (!profile?.birthday) redirect("/onboarding");
+
     const { data } = await adminClient
       .from("notices")
       .select("id")

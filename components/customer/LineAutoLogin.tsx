@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { initLiff, lineLogin } from "@/lib/liff/client";
-import { MessageCircle, Loader2 } from "lucide-react";
+import { initLiff } from "@/lib/liff/client";
+import { Loader2, MessageCircle } from "lucide-react";
 
 /**
- * LINE 自動ログイン:
- * - LIFF が未設定なら何も表示しない
- * - isLoggedIn() が true なら自動でトークンを送信してログイン
- *   （LINE アプリ内ブラウザ・通常ブラウザのリダイレクト後どちらも対応）
- * - ログイン前なら「LINEでログイン」ボタンを表示
+ * LINE LIFF 自動ログイン
+ *
+ * - LIFF 未設定 → 何も表示しない
+ * - isLoggedIn() = true → accessToken を使って自動ログイン（ボタン不要）
+ * - 未ログイン → 「LINEでログイン」ボタンを表示し liff.login() を呼ぶ
+ * - needsBirthday = true → /onboarding へリダイレクト（初回登録フロー）
+ *
+ * NOTE: idToken は openid scope 必須で通常 null になるため accessToken を使用。
  */
 export function LineAutoLogin() {
   const router = useRouter();
@@ -18,80 +21,95 @@ export function LineAutoLogin() {
   const [autoTrying, setAutoTrying] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
+  const doLogin = useCallback(async () => {
+    setError(null);
+    setAutoTrying(true);
+
+    try {
+      const liff = await initLiff();
+      if (!liff) throw new Error("LIFF が初期化されていません");
+
+      // 未ログインなら LINE 認証画面へ（その後このページに戻る）
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+
+      const accessToken = liff.getAccessToken();
+      if (!accessToken) throw new Error("アクセストークン取得失敗");
+
+      const profile = await liff.getProfile();
+
+      const res = await fetch("/api/auth/line", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          accessToken,
+          displayName: profile.displayName,
+          pictureUrl:  profile.pictureUrl ?? "",
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "ログイン失敗");
+
+      // 初回登録（誕生日未設定）→ オンボーディングへ
+      if (data.needsBirthday) {
+        router.push("/onboarding");
+      } else {
+        router.push("/home");
+      }
+      router.refresh();
+
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ログイン中にエラーが発生しました");
+      setAutoTrying(false);
+    }
+  }, [router]);
+
+  // マウント時: LIFF 初期化 → ログイン済みなら自動ログイン
   useEffect(() => {
     let cancelled = false;
-
-    async function run() {
+    (async () => {
       const liff = await initLiff();
       if (cancelled || !liff) return;
       setEnabled(true);
 
-      // LINE アプリ内・通常ブラウザのリダイレクト後どちらも isLoggedIn() で判定
       if (liff.isLoggedIn()) {
-        setAutoTrying(true);
-        try {
-          const idToken = liff.getIDToken();
-          if (!idToken) { setAutoTrying(false); return; }
-          const profile = await liff.getProfile();
-          const res = await fetch("/api/auth/line", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              idToken,
-              displayName: profile.displayName,
-              pictureUrl:  profile.pictureUrl,
-            }),
-          });
-          if (res.ok) {
-            router.push("/home");
-            router.refresh();
-          } else {
-            const data = await res.json().catch(() => ({}));
-            setError(data.error ?? "LINEログイン失敗");
-            setAutoTrying(false);
-          }
-        } catch {
-          setAutoTrying(false);
-        }
+        doLogin();
       }
-    }
-    run();
-
+    })();
     return () => { cancelled = true; };
-  }, [router]);
+  }, [doLogin]);
 
-  async function handleManualLogin() {
-    setError(null);
-    try {
-      await lineLogin();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "LIFFが初期化されていません");
-    }
-  }
+  // ── 描画 ──────────────────────────────────────────────────────────────────
 
   if (!enabled) return null;
 
   if (autoTrying) {
     return (
-      <div className="flex items-center justify-center gap-2 py-3 text-sm"
-        style={{ color: "#06C755" }}>
-        <Loader2 size={16} className="animate-spin" />
-        LINEログイン中...
+      <div className="flex flex-col items-center gap-3 py-6">
+        <Loader2 size={28} className="animate-spin" style={{ color: "#06C755" }} />
+        <p className="text-sm font-medium" style={{ color: "#06C755" }}>
+          LINEアカウントで自動ログイン中...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <button
-        onClick={handleManualLogin}
-        className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white interactive"
-        style={{ background: "#06C755", boxShadow: "0 0 14px rgba(6,199,85,0.35)" }}
+        onClick={doLogin}
+        className="w-full flex items-center justify-center gap-2.5 rounded-xl py-3.5 text-sm font-bold text-white interactive"
+        style={{ background: "#06C755", boxShadow: "0 0 18px rgba(6,199,85,0.40)" }}
       >
-        <MessageCircle size={18} />
-        LINEでログイン
+        <MessageCircle size={20} />
+        LINEでログイン・登録
       </button>
-      {error && <p className="text-xs text-destructive text-center">{error}</p>}
+      {error && (
+        <p className="text-xs text-destructive text-center px-2">{error}</p>
+      )}
     </div>
   );
 }
