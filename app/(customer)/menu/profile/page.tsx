@@ -23,6 +23,7 @@ interface ProfileData {
   chip_balance: number;
   point_balance: number;
   total_visit_count: number;
+  avatar_url: string | null;
 }
 
 export default function ProfilePage() {
@@ -45,7 +46,7 @@ export default function ProfilePage() {
       if (!user) { router.push("/login"); return; }
       const { data } = await supabase
         .from("users")
-        .select("id, nickname, chip_balance, point_balance, total_visit_count")
+        .select("id, nickname, chip_balance, point_balance, total_visit_count, avatar_url")
         .eq("id", user.id)
         .single();
       if (data) {
@@ -95,6 +96,8 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile/avatar", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      // avatar_url をアップロード後の URL に更新してキャッシュバスト
+      setProfile(p => p ? { ...p, avatar_url: data.url } : p);
       setImgFailed(false);
       setAvatarBust(Date.now());
       toast.success("プロフィール画像を更新しました");
@@ -112,7 +115,10 @@ export default function ProfilePage() {
 
   const color = getAvatarColor(profile.id);
   const initial = (profile.nickname || "?").charAt(0).toUpperCase();
-  const avatarSrc = `${getAvatarUrl(profile.id)}?v=${avatarBust}`;
+  // avatar_url 優先（LINE アイコン or アップロード済み画像）、なければ Supabase Storage
+  const avatarSrc = profile.avatar_url
+    ? `${profile.avatar_url}${profile.avatar_url.includes("?") ? "&" : "?"}v=${avatarBust}`
+    : `${getAvatarUrl(profile.id)}?v=${avatarBust}`;
 
   return (
     <div className="px-4 py-5 space-y-5 animate-page-in">
