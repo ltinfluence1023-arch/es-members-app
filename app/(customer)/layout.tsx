@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/customer/BottomNav";
 import { HamburgerMenu } from "@/components/customer/HamburgerMenu";
 import { NoticeBell } from "@/components/customer/NoticeBell";
+import { LiffProfileSync } from "@/components/customer/LiffProfileSync";
 
 export default async function CustomerLayout({
   children,
@@ -61,6 +62,9 @@ export default async function CustomerLayout({
           <HamburgerMenu />
         </div>
       </header>
+
+      {/* LIFF プロフィール同期（バックグラウンド・無音） */}
+      <LiffProfileSync />
 
       {/* Main content */}
       <main className="flex-1 pb-24 overflow-y-auto">

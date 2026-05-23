@@ -71,6 +71,7 @@ interface Props {
   pointBalance: number;
   visitCount: number;
   nickname: string;
+  avatarUrl?: string | null;
   rankName: string | null | undefined;
   userId: string;
   achievementRankKey?: AchievementRankKey;
@@ -79,7 +80,7 @@ interface Props {
 
 const RESERVATION_URL = "https://booking.ebica.jp/webrsv/vacant/e014040501/18515?isfixshop=true&affiid=glb";
 
-export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, rankName, userId, achievementRankKey, achievementPct }: Props) {
+export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, avatarUrl, rankName, userId, achievementRankKey, achievementPct }: Props) {
   const [chips, setChips] = useState(chipBalance);
   const [points, setPoints] = useState(pointBalance);
   const [refreshing, setRefreshing] = useState(false);
@@ -182,14 +183,28 @@ export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, rank
           {/* Middle: nickname (left) + chip balance (right) */}
           <div className="flex-1 flex items-center justify-between gap-3 mt-2">
             {/* Left: User info */}
-            <div className="min-w-0">
-              <p className="text-[15px] font-bold tracking-[0.04em] leading-tight text-white/95 truncate">
-                {nickname || "—"}
-              </p>
-              <p className="text-[10px] font-mono tracking-[0.08em] mt-1"
-                style={{ color: "rgba(255,255,255,0.38)" }}>
-                {memberId}
-              </p>
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* LINE アバター */}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={nickname}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  style={{ border: `1.5px solid ${style.accentColor}60` }} />
+              ) : (
+                <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-black text-white text-base"
+                  style={{ background: `${style.accentColor}30`, border: `1.5px solid ${style.accentColor}50` }}>
+                  {(nickname || "?").charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold tracking-[0.04em] leading-tight text-white/95 truncate">
+                  {nickname || "—"}
+                </p>
+                <p className="text-[10px] font-mono tracking-[0.08em] mt-0.5"
+                  style={{ color: "rgba(255,255,255,0.38)" }}>
+                  {memberId}
+                </p>
+              </div>
             </div>
             {/* Right: Chip balance */}
             <div className="text-right flex-shrink-0">

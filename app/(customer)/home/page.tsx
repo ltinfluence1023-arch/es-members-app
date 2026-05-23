@@ -19,6 +19,7 @@ interface UserWithRank {
   chip_balance: number;
   point_balance: number;
   total_visit_count: number;
+  avatar_url: string | null;
   ranks: { name: string } | null;
 }
 
@@ -49,7 +50,7 @@ export default async function HomePage() {
   ] = await Promise.all([
     adminClient
       .from("users")
-      .select("nickname, chip_balance, point_balance, total_visit_count, ranks(name)")
+      .select("nickname, chip_balance, point_balance, total_visit_count, avatar_url, ranks(name)")
       .eq("id", user.id)
       .single(),
     adminClient
@@ -175,6 +176,7 @@ export default async function HomePage() {
         pointBalance={typedUser?.point_balance ?? 0}
         visitCount={typedUser?.total_visit_count ?? 0}
         nickname={typedUser?.nickname ?? ""}
+        avatarUrl={typedUser?.avatar_url ?? null}
         rankName={rankName}
         userId={user.id}
         achievementRankKey={achievementRank.key}
