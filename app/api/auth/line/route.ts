@@ -6,21 +6,18 @@ import { z } from "zod";
 const schema = z.object({
   accessToken: z.string().min(1),
   displayName: z.string().optional(),
-  pictureUrl:  z.string().optional(),   // URL バリデーション省略（LINE CDN 形式が .url() で弾かれる場合対策）
+  pictureUrl:  z.string().optional(),
 });
 
 /**
  * LINE LIFF login → Supabase Auth handoff.
  *
- * idToken (openid scope 必須) の代わりに accessToken を使う。
- * profile scope のみで動作し、LINE 側の追加設定が不要。
- *
  * Flow:
- *   1. GET /v2/profile で accessToken を検証し LINE userId を取得
+ *   1. LINE Profile API で accessToken を検証し userId / displayName / pictureUrl を取得
  *   2. public.users.line_user_id で既存ユーザーを検索
- *   3. 未登録なら Supabase auth + public.users 行を作成
- *   4. signInWithPassword でセッション Cookie を発行
- *   5. needsBirthday フラグを返す（初回登録フロー用）
+ *   3a. 新規 → createUser → public.users 作成
+ *   3b. createUser 失敗 → signInWithPassword で既存セッションを確立 → public.users を修復
+ *   4. セッション Cookie を発行して needsBirthday を返す
  */
 export async function POST(request: NextRequest) {
   const channelId = process.env.LINE_CHANNEL_ID;
@@ -58,56 +55,79 @@ export async function POST(request: NextRequest) {
   const syntheticEmail  = `line_${lineUserId}@line.local`;
   const initialPassword = `line_${lineUserId}_${channelId}`;
 
-  // 2) line_user_id カラムで既存ユーザーを検索
+  // 2) line_user_id で既存ユーザーを検索
   const { data: existingUser } = await adminClient
     .from("users")
     .select("id, birthday")
     .eq("line_user_id", lineUserId)
     .single();
 
-  let userId       = existingUser?.id ?? null;
+  let userId        = existingUser?.id ?? null;
   let needsBirthday = !existingUser?.birthday;
+  let sessionReady  = false;   // signInWithPassword を既に実行済みかどうか
 
   if (!userId) {
-    // 3a) 新規 Supabase auth ユーザー作成を試みる
+    // 3a) 新規 auth ユーザー作成を試みる
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
-      email:          syntheticEmail,
-      password:       initialPassword,
-      email_confirm:  true,
-      user_metadata:  { line_user_id: lineUserId, line_display_name: displayName },
+      email:         syntheticEmail,
+      password:      initialPassword,
+      email_confirm: true,
+      user_metadata: { line_user_id: lineUserId, line_display_name: displayName },
     });
 
     if (createErr) {
-      // "already registered" = 旧ログインで auth.users は存在するが
-      // public.users の line_user_id が NULL のケース → email_or_phone で紐付け
-      if (createErr.message.includes("already registered")) {
-        const { data: byEmail } = await adminClient
-          .from("users")
-          .select("id, birthday")
-          .eq("email_or_phone", syntheticEmail)
-          .single();
+      // --- createUser 失敗（メッセージ問わず） ---
+      // 旧コードで auth.users だけ存在し public.users.line_user_id が NULL のケースに対応。
+      // signInWithPassword で既存セッションを確立し userId を取得する。
+      const supabase = await createClient();
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email:    syntheticEmail,
+        password: initialPassword,
+      });
 
-        if (byEmail) {
-          userId        = byEmail.id;
-          needsBirthday = !byEmail.birthday;
-          // line_user_id と最新プロフィールを更新
-          await adminClient.from("users").update({
-            line_user_id: lineUserId,
-            ...(displayName ? { nickname:   displayName } : {}),
-            ...(pictureUrl  ? { avatar_url: pictureUrl  } : {}),
-          }).eq("id", userId);
-        } else {
-          // auth.users にあるが public.users が存在しない（異常系）→ サインインで ID を取得
-          return NextResponse.json({ error: "アカウントの状態が不正です。管理者にお問い合わせください。" }, { status: 500 });
-        }
-      } else {
-        return NextResponse.json({ error: createErr.message }, { status: 500 });
+      if (signInErr || !signInData?.user) {
+        // 本当にログインできない（パスワード不一致など）
+        return NextResponse.json(
+          { error: `ログインできませんでした: ${createErr.message}` },
+          { status: 500 },
+        );
       }
+
+      userId       = signInData.user.id;
+      sessionReady = true;
+
+      // public.users を確認・修復
+      const { data: pub } = await adminClient
+        .from("users")
+        .select("id, birthday")
+        .eq("id", userId)
+        .single();
+
+      if (pub) {
+        needsBirthday = !pub.birthday;
+        // line_user_id と最新プロフィールを紐付け
+        await adminClient.from("users").update({
+          line_user_id: lineUserId,
+          ...(displayName ? { nickname:   displayName } : {}),
+          ...(pictureUrl  ? { avatar_url: pictureUrl  } : {}),
+        }).eq("id", userId);
+      } else {
+        // auth.users はあるが public.users がない → 新規作成
+        needsBirthday = true;
+        await adminClient.from("users").insert({
+          id:             userId,
+          nickname:       displayName ?? "LINEユーザー",
+          email_or_phone: syntheticEmail,
+          avatar_url:     pictureUrl,
+          line_user_id:   lineUserId,
+        });
+      }
+
     } else if (created.user) {
+      // 新規ユーザー作成成功
       userId        = created.user.id;
       needsBirthday = true;
 
-      // 3b) public.users 行を作成（birthday は後でオンボーディングで設定）
       await adminClient.from("users").insert({
         id:             userId,
         nickname:       displayName ?? "LINEユーザー",
@@ -118,6 +138,7 @@ export async function POST(request: NextRequest) {
     } else {
       return NextResponse.json({ error: "ユーザー作成失敗" }, { status: 500 });
     }
+
   } else {
     // 3c) 既存ユーザー: LINE プロフィールを最新情報に更新
     await adminClient.from("users").update({
@@ -126,14 +147,16 @@ export async function POST(request: NextRequest) {
     }).eq("id", userId);
   }
 
-  // 4) signInWithPassword でセッション Cookie を発行
-  const supabase = await createClient();
-  const { error: signInErr } = await supabase.auth.signInWithPassword({
-    email:    syntheticEmail,
-    password: initialPassword,
-  });
-  if (signInErr) {
-    return NextResponse.json({ error: signInErr.message }, { status: 500 });
+  // 4) セッション Cookie を発行（3b で signIn 済みの場合はスキップ）
+  if (!sessionReady) {
+    const supabase = await createClient();
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email:    syntheticEmail,
+      password: initialPassword,
+    });
+    if (signInErr) {
+      return NextResponse.json({ error: signInErr.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ success: true, userId, needsBirthday });
