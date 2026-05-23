@@ -12,9 +12,15 @@ export default async function BlackjackPage() {
 
   const { data } = await createAdminClient()
     .from("users")
-    .select("chip_balance")
+    .select("chip_balance, nickname, avatar_url")
     .eq("id", user.id)
     .single();
 
-  return <BlackjackGame initialBalance={data?.chip_balance ?? 0} />;
+  return (
+    <BlackjackGame
+      initialBalance={data?.chip_balance ?? 0}
+      nickname={data?.nickname ?? ""}
+      avatarUrl={data?.avatar_url ?? null}
+    />
+  );
 }

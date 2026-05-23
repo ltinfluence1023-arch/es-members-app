@@ -6,7 +6,8 @@ import {
   calcNetChips, type Card,
 } from "@/lib/utils/blackjack";
 
-const MIN_BET = 50;
+const MIN_BET = 10;
+const MAX_BET = 100;
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,8 +16,8 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { bet } = await request.json().catch(() => ({}));
-  if (!Number.isInteger(bet) || bet < MIN_BET) {
-    return NextResponse.json({ error: `最低ベットは${MIN_BET}チップです` }, { status: 400 });
+  if (!Number.isInteger(bet) || bet < MIN_BET || bet > MAX_BET) {
+    return NextResponse.json({ error: `ベットは${MIN_BET}〜${MAX_BET}チップです` }, { status: 400 });
   }
 
   const adminClient = createAdminClient();

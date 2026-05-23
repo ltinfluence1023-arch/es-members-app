@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { Loader2, RefreshCw, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { SUIT_DISPLAY, RED_SUITS, type Card, type Suit } from "@/lib/utils/blackjack";
+import { getAvatarColor } from "@/lib/utils/avatar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PlayingCard — 60×84px
@@ -117,7 +118,16 @@ interface GameState {
   playerScore: number; dealerScore: number;
   status: string; net: number; settled: boolean; bet: number;
 }
-const BET_PRESETS = [50, 100, 200, 500, 1000];
+interface HistoryEntry {
+  dealerScore: number;
+  playerScore: number;
+  status: string;
+  net: number;
+}
+
+const MAX_BET     = 100;
+const BET_PRESETS = [10, 25, 50, 75, 100];
+
 const STATUS_INFO: Record<string, { label: string; color: string; emoji: string }> = {
   blackjack:   { label: "BLACKJACK!!", color: "#fbbf24", emoji: "🎊" },
   player_win:  { label: "YOU WIN!",    color: "#4ade80", emoji: "🎉" },
@@ -131,11 +141,20 @@ const STATUS_INFO: Record<string, { label: string; color: string; emoji: string 
 // BlackjackGame
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
+export function BlackjackGame({
+  initialBalance,
+  nickname,
+  avatarUrl,
+}: {
+  initialBalance: number;
+  nickname: string;
+  avatarUrl: string | null;
+}) {
   const [balance,  setBalance]  = useState(initialBalance);
-  const [bet,      setBet]      = useState(100);
+  const [bet,      setBet]      = useState(25);
   const [game,     setGame]     = useState<GameState | null>(null);
   const [loading,  setLoading]  = useState<string | null>(null);
+  const [history,  setHistory]  = useState<HistoryEntry[]>([]);
   const [totalNet, setTotalNet] = useState(0);
 
   const prevSettled = useRef(false);
@@ -171,6 +190,10 @@ export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
       if (!res.ok) { alert(data.error ?? "エラーが発生しました"); return; }
       setGame({ ...data, settled: data.settled ?? false });
       setBalance(data.balance);
+      if (data.settled) {
+        setTotalNet((p) => p + (data.net as number));
+        setHistory((h) => [{ dealerScore: data.dealerScore, playerScore: data.playerScore, status: data.status, net: data.net }, ...h].slice(0, 10));
+      }
     } catch (err) { console.error("[BJ deal]", err); alert("通信エラーが発生しました。再度お試しください。"); }
     finally { setLoading(null); }
   }, [bet, balance]);
@@ -188,6 +211,7 @@ export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
       if (data.settled) {
         setTotalNet((p) => p + (data.net as number));
         if (data.balance !== undefined) setBalance(data.balance);
+        setHistory((h) => [{ dealerScore: data.dealerScore, playerScore: data.playerScore, status: data.status, net: data.net }, ...h].slice(0, 10));
       }
     } catch (err) { console.error("[BJ action]", err); alert("通信エラーが発生しました。再度お試しください。"); }
     finally { setLoading(null); }
@@ -307,12 +331,20 @@ export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
           </div>
           {/* アイコン行（下）*/}
           <div className="flex items-center gap-2.5">
-            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center text-xl"
-              style={{ background: "oklch(0.20 0.04 270 / 40%)", border: "2px solid oklch(0.45 0.10 270 / 35%)" }}>
-              🎮
-            </div>
+            {/* プレイヤーアバター */}
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt={nickname}
+                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                style={{ border: "2px solid oklch(0.45 0.10 270 / 60%)" }} />
+            ) : (
+              <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center font-black text-white text-lg"
+                style={{ background: getAvatarColor("player"), border: "2px solid oklch(0.45 0.10 270 / 35%)" }}>
+                {(nickname || "?").charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
-              <p className="text-[11px] font-black text-white leading-none">YOU</p>
+              <p className="text-[11px] font-black text-white leading-none">{nickname || "YOU"}</p>
               <p className="text-[9px]" style={{ color: "oklch(1 0 0 / 40%)" }}>Player</p>
             </div>
             {game && <div className="ml-auto"><ScoreBadge score={game.playerScore} /></div>}
@@ -335,10 +367,11 @@ export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
               <p className="text-[8px] font-black tracking-[0.25em] uppercase text-center"
                 style={{ color: "oklch(1 0 0 / 35%)" }}>BET AMOUNT</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {BET_PRESETS.filter((p) => p <= balance).map((p) => (
+                {BET_PRESETS.filter((p) => p <= balance && p <= MAX_BET).map((p) => (
                   <ChipButton key={p} amount={p} selected={bet === p} onClick={() => setBet(p)} disabled={!!loading} />
                 ))}
-                {balance > 0 && !BET_PRESETS.includes(balance) && (
+                {/* ALL IN: 残高が MAX_BET 未満かつプリセットに含まれない場合 */}
+                {balance > 0 && balance < MAX_BET && !BET_PRESETS.includes(balance) && (
                   <button onClick={() => setBet(balance)} disabled={!!loading}
                     className="relative flex items-center justify-center rounded-full font-black flex-shrink-0"
                     style={{ width: 56, height: 56,
@@ -449,6 +482,20 @@ export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
                 <p className="text-[20px] font-black relative z-10" style={{ color: info.color, letterSpacing: "0.05em" }}>
                   {info.label}
                 </p>
+                {/* ディーラー最終スコア */}
+                <div className="flex items-center justify-center gap-2 mt-1.5 relative z-10">
+                  <span className="text-[9px] font-bold" style={{ color: "oklch(1 0 0 / 38%)" }}>DEALER</span>
+                  <span className="text-[16px] font-black tabular-nums"
+                    style={{ color: game.dealerScore > 21 ? "#f87171" : game.dealerScore === 21 ? "#fbbf24" : "rgba(255,255,255,0.85)" }}>
+                    {game.dealerScore > 21 ? "BUST" : game.dealerScore}
+                  </span>
+                  <span className="text-[9px] font-bold" style={{ color: "oklch(1 0 0 / 38%)" }}>vs</span>
+                  <span className="text-[9px] font-bold" style={{ color: "oklch(1 0 0 / 38%)" }}>YOU</span>
+                  <span className="text-[16px] font-black tabular-nums"
+                    style={{ color: game.playerScore > 21 ? "#f87171" : game.playerScore === 21 ? "#fbbf24" : "rgba(255,255,255,0.85)" }}>
+                    {game.playerScore > 21 ? "BUST" : game.playerScore}
+                  </span>
+                </div>
                 <p className="text-[32px] font-black mt-1 relative z-10 tabular-nums"
                   style={{ color: game.net >= 0 ? "#4ade80" : "#f87171",
                     animation: "bj-net-pop 0.4s cubic-bezier(0.22,1,0.36,1) 0.2s both" }}>
@@ -461,6 +508,34 @@ export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
                   </p>
                 )}
               </div>
+
+              {/* ── セッション履歴バー ── */}
+              {history.length > 1 && (
+                <div className="w-full flex flex-col gap-1">
+                  <p className="text-[8px] font-black tracking-[0.2em] uppercase text-center"
+                    style={{ color: "oklch(1 0 0 / 25%)" }}>HISTORY</p>
+                  <div className="flex gap-1 justify-center flex-wrap">
+                    {history.slice(0, 8).map((h, i) => {
+                      const isW = ["blackjack","player_win"].includes(h.status);
+                      const isB = ["player_bust","double_bust","dealer_win"].includes(h.status);
+                      const col = isW ? "#4ade80" : isB ? "#f87171" : "#94a3b8";
+                      return (
+                        <div key={i}
+                          className="flex flex-col items-center px-2 py-1 rounded-lg"
+                          style={{ background: `${col}18`, border: `1px solid ${col}35`, minWidth: 36 }}>
+                          <span className="text-[9px] font-black tabular-nums" style={{ color: col }}>
+                            {h.dealerScore > 21 ? "B" : h.dealerScore}
+                          </span>
+                          <span className="text-[7px]" style={{ color: "oklch(1 0 0 / 30%)" }}>
+                            {h.net >= 0 ? "+" : ""}{h.net}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <button onClick={handleNext}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-white interactive text-[12px]"
                 style={{ background: "oklch(1 0 0 / 8%)", border: "1.5px solid oklch(1 0 0 / 15%)" }}>
