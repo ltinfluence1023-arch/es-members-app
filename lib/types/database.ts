@@ -64,6 +64,7 @@ export interface Database {
           birthday: string | null;
           gender: "male" | "female" | "other" | null;
           avatar_url: string | null;
+          line_user_id: string | null;
         };
         Insert: {
           id: string;
@@ -78,6 +79,7 @@ export interface Database {
           birthday?: string | null;
           gender?: "male" | "female" | "other" | null;
           avatar_url?: string | null;
+          line_user_id?: string | null;
         };
         Update: {
           id?: string;
@@ -92,6 +94,7 @@ export interface Database {
           birthday?: string | null;
           gender?: "male" | "female" | "other" | null;
           avatar_url?: string | null;
+          line_user_id?: string | null;
         };
         Relationships: [
           {

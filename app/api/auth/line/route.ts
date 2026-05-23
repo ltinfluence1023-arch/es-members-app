@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const schema = z.object({
-  idToken: z.string().min(1),       // LIFF id_token (JWT issued by LINE)
+  idToken: z.string().min(1),
   displayName: z.string().optional(),
   pictureUrl: z.string().url().optional(),
 });
@@ -13,10 +13,10 @@ const schema = z.object({
  * LINE LIFF login → Supabase Auth handoff.
  *
  * Flow:
- *   1. Verify the LIFF id_token with LINE Verify API (server-side, no secret needed).
- *   2. Use line `sub` (LINE user id) as the synthetic email for Supabase Auth.
- *   3. Create user if first time, otherwise just generate a session.
- *   4. Return access_token / refresh_token; the client sets the session.
+ *   1. LINE Verify API で id_token を検証して LINE userId (sub) を取得
+ *   2. public.users.line_user_id で既存ユーザーを検索（listUsers() より高速）
+ *   3. 未登録なら Supabase auth + public.users 行を作成
+ *   4. 決定論的パスワードで signInWithPassword → セッション Cookie を発行
  */
 export async function POST(request: NextRequest) {
   const channelId = process.env.LINE_CHANNEL_ID;
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   }
   const { idToken, displayName, pictureUrl } = parsed.data;
 
-  // 1) Verify id_token with LINE's verify endpoint (no secret required)
+  // 1) LINE の Verify API で id_token を検証（secret 不要）
   const verifyRes = await fetch("https://api.line.me/oauth2/v2.1/verify", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -40,22 +40,29 @@ export async function POST(request: NextRequest) {
   if (!verifyRes.ok) {
     return NextResponse.json({ error: "LINEトークン検証失敗" }, { status: 401 });
   }
-  const verified = await verifyRes.json() as { sub: string; name?: string; picture?: string; email?: string };
+  const verified = await verifyRes.json() as {
+    sub: string;
+    name?: string;
+    picture?: string;
+    email?: string;
+  };
   const lineUserId = verified.sub;
 
   const adminClient = createAdminClient();
-  const syntheticEmail = `line_${lineUserId}@line.local`;
-  const initialPassword = `line_${lineUserId}_${channelId}`; // deterministic but private
+  const syntheticEmail  = `line_${lineUserId}@line.local`;
+  const initialPassword = `line_${lineUserId}_${channelId}`;
 
-  // 2) Find or create Supabase auth user
-  // Try to find existing by email
-  const { data: existing } = await adminClient.auth.admin.listUsers();
-  let userId: string | null = null;
-  for (const u of existing.users ?? []) {
-    if (u.email === syntheticEmail) { userId = u.id; break; }
-  }
+  // 2) line_user_id カラムで既存ユーザーを検索
+  const { data: existingUser } = await adminClient
+    .from("users")
+    .select("id")
+    .eq("line_user_id", lineUserId)
+    .single();
+
+  let userId = existingUser?.id ?? null;
 
   if (!userId) {
+    // 3a) 新規 Supabase auth ユーザーを作成
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
       email: syntheticEmail,
       password: initialPassword,
@@ -63,20 +70,30 @@ export async function POST(request: NextRequest) {
       user_metadata: { line_user_id: lineUserId, line_display_name: displayName },
     });
     if (createErr || !created.user) {
-      return NextResponse.json({ error: createErr?.message ?? "ユーザー作成失敗" }, { status: 500 });
+      return NextResponse.json(
+        { error: createErr?.message ?? "ユーザー作成失敗" },
+        { status: 500 },
+      );
     }
     userId = created.user.id;
 
-    // Create public.users row with LINE display name as nickname
-    await adminClient.from("users").upsert({
+    // 3b) public.users 行を作成
+    await adminClient.from("users").insert({
       id: userId,
-      nickname: displayName ?? `line_${lineUserId.slice(0, 8)}`,
+      nickname: displayName ?? "LINEユーザー",
       email_or_phone: syntheticEmail,
       avatar_url: pictureUrl ?? null,
-    }, { onConflict: "id" });
+      line_user_id: lineUserId,
+    });
+  } else {
+    // 3c) 既存ユーザー: プロフィールを最新 LINE 情報で更新
+    await adminClient.from("users").update({
+      ...(displayName ? { nickname: displayName } : {}),
+      ...(pictureUrl  ? { avatar_url: pictureUrl } : {}),
+    }).eq("id", userId);
   }
 
-  // 3) Generate session by signing in with the deterministic password
+  // 4) 決定論的パスワードで signInWithPassword → Cookie にセッションを書き込む
   const supabase = await createClient();
   const { error: signInErr } = await supabase.auth.signInWithPassword({
     email: syntheticEmail,

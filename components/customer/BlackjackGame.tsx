@@ -1,320 +1,480 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
-import { SUIT_DISPLAY, RED_SUITS, handValue, type Card, type Suit } from "@/lib/utils/blackjack";
+import { useState, useCallback, useRef } from "react";
+import { Loader2, RefreshCw, ChevronLeft } from "lucide-react";
+import Link from "next/link";
+import { SUIT_DISPLAY, RED_SUITS, type Card, type Suit } from "@/lib/utils/blackjack";
 
-// ── カードコンポーネント ─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PlayingCard — 60×84px
+// ─────────────────────────────────────────────────────────────────────────────
 
-function PlayingCard({ card, hidden = false, small = false }: { card: Card; hidden?: boolean; small?: boolean }) {
-  const size = small ? "w-10 h-14 text-[10px]" : "w-14 h-20 text-[13px]";
+function PlayingCard({ card, hidden = false, delay = 0, flipReveal = false }: {
+  card: Card; hidden?: boolean; delay?: number; flipReveal?: boolean;
+}) {
+  const [suit, value] = card;
+  const isRed = RED_SUITS.has(suit as Suit);
+  const anim = flipReveal
+    ? `bj-flip-reveal 0.45s cubic-bezier(0.22,1,0.36,1) ${delay}s both`
+    : `bj-deal 0.28s cubic-bezier(0.22,1,0.36,1) ${delay}s both`;
 
   if (hidden) {
     return (
-      <div className={`${size} rounded-lg flex items-center justify-center flex-shrink-0 select-none`}
-        style={{ background: "linear-gradient(135deg, #1a0408 0%, #3d0a14 100%)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 3px 8px rgba(0,0,0,0.5)" }}>
-        <span className="text-2xl opacity-30">🂠</span>
+      <div className="w-[60px] h-[84px] rounded-xl flex items-center justify-center flex-shrink-0 select-none relative overflow-hidden"
+        style={{ animation: anim,
+          background: "linear-gradient(145deg,oklch(0.22 0.07 145) 0%,oklch(0.12 0.03 145) 100%)",
+          border: "1.5px solid oklch(0.38 0.08 145 / 50%)",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.55),inset 0 1px 0 oklch(1 0 0 / 7%)" }}>
+        <div className="absolute inset-2 rounded-lg opacity-20" style={{
+          backgroundImage:
+            "repeating-linear-gradient(45deg,oklch(0.5 0.1 145) 0,oklch(0.5 0.1 145) 1px,transparent 1px,transparent 7px)," +
+            "repeating-linear-gradient(-45deg,oklch(0.5 0.1 145) 0,oklch(0.5 0.1 145) 1px,transparent 1px,transparent 7px)" }} />
+        <span style={{ fontSize: 22, opacity: 0.28 }}>🂠</span>
       </div>
     );
   }
-
-  const [suit, value] = card;
-  const isRed = RED_SUITS.has(suit as Suit);
-  const color = isRed ? "#e83a4a" : "white";
-
   return (
-    <div
-      className={`${size} rounded-lg flex-shrink-0 relative select-none`}
-      style={{ background: "linear-gradient(160deg, #fafafa 0%, #f0f0f0 100%)", border: "1px solid rgba(0,0,0,0.15)", boxShadow: "0 3px 8px rgba(0,0,0,0.4)" }}
-    >
-      <span className="absolute top-1 left-1.5 font-black leading-none" style={{ color, fontSize: small ? "9px" : "12px" }}>
+    <div className="w-[60px] h-[84px] rounded-xl flex-shrink-0 relative select-none"
+      style={{ animation: anim,
+        background: "linear-gradient(160deg,#fefefe 0%,#efefef 100%)",
+        border: "1px solid rgba(0,0,0,0.10)",
+        boxShadow: "0 5px 14px rgba(0,0,0,0.45),0 1px 3px rgba(0,0,0,0.2)" }}>
+      <div className="absolute top-[4px] left-[5px] font-black leading-[1.15] text-[12px]"
+        style={{ color: isRed ? "#e83a4a" : "#1a1a1a" }}>
         {value}<br />{SUIT_DISPLAY[suit as Suit]}
-      </span>
-      <span className="absolute bottom-1 right-1.5 font-black leading-none rotate-180" style={{ color, fontSize: small ? "9px" : "12px" }}>
-        {value}<br />{SUIT_DISPLAY[suit as Suit]}
-      </span>
-      <span className="absolute inset-0 flex items-center justify-center font-black" style={{ color, fontSize: small ? "16px" : "22px" }}>
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center font-black text-[28px]"
+        style={{ color: isRed ? "#e83a4a" : "#1a1a1a" }}>
         {SUIT_DISPLAY[suit as Suit]}
-      </span>
+      </div>
+      <div className="absolute bottom-[4px] right-[5px] font-black leading-[1.15] text-[12px] rotate-180"
+        style={{ color: isRed ? "#e83a4a" : "#1a1a1a" }}>
+        {value}<br />{SUIT_DISPLAY[suit as Suit]}
+      </div>
     </div>
   );
 }
 
-function Hand({ cards, score, label, hideSecond = false }: {
-  cards: Card[]; score: number; label: string; hideSecond?: boolean;
-}) {
+// ─────────────────────────────────────────────────────────────────────────────
+// ScoreBadge — 見やすい大きめサイズ
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ScoreBadge({ score, hidden = false }: { score: number; hidden?: boolean }) {
+  const isBust = score > 21;
+  const isBJ   = score === 21;
+  let bg = "oklch(1 0 0 / 14%)"; let color = "rgba(255,255,255,0.92)";
+  if (hidden)      { bg = "oklch(1 0 0 / 7%)";          color = "oklch(1 0 0 / 32%)"; }
+  else if (isBust) { bg = "oklch(0.55 0.22 22 / 35%)";  color = "#ff6b6b"; }
+  else if (isBJ)   { bg = "oklch(0.82 0.18 85 / 30%)";  color = "#fbbf24"; }
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between px-1">
-        <p className="text-[10px] font-black tracking-[0.18em] uppercase text-muted-foreground">{label}</p>
-        <span className="text-[11px] font-black px-2 py-0.5 rounded-full"
-          style={{ background: score > 21 ? "oklch(0.63 0.26 22 / 30%)" : "oklch(1 0 0 / 10%)", color: score > 21 ? "var(--primary)" : "white" }}>
-          {hideSecond ? "?" : score}
-        </span>
-      </div>
-      <div className="flex gap-2 flex-wrap">
-        {cards.map((card, i) => (
-          <PlayingCard key={i} card={card} hidden={hideSecond && i === 1} />
-        ))}
-      </div>
+    <div key={hidden ? "h" : score}
+      className="inline-flex items-center px-2.5 py-[3px] rounded-full font-black text-[14px] flex-shrink-0"
+      style={{ background: bg, color, minWidth: 36, justifyContent: "center",
+        animation: "bj-score-update 0.3s cubic-bezier(0.22,1,0.36,1) both",
+        border: isBJ ? "1px solid oklch(0.82 0.18 85 / 40%)" : isBust ? "1px solid oklch(0.55 0.22 22 / 40%)" : "1px solid oklch(1 0 0 / 12%)" }}>
+      {hidden ? "?" : isBust ? "BUST" : isBJ ? "BJ!" : score}
     </div>
   );
 }
 
-// ── ゲーム状態 ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ChipButton
+// ─────────────────────────────────────────────────────────────────────────────
 
-interface GameState {
-  sessionId: string;
-  playerHand: Card[];
-  dealerHand: Card[];
-  playerScore: number;
-  dealerScore: number;
-  status: string;
-  net: number;
-  settled: boolean;
-}
-
-const BET_PRESETS = [50, 100, 200, 500, 1000];
-
-const STATUS_INFO: Record<string, { label: string; color: string; emoji: string }> = {
-  blackjack:   { label: "BLACKJACK!!",  color: "#facc15", emoji: "🎊" },
-  player_win:  { label: "WIN!",         color: "#4ade80", emoji: "🎉" },
-  push:        { label: "PUSH",         color: "#94a3b8", emoji: "🤝" },
-  player_bust: { label: "BUST...",      color: "#e83a4a", emoji: "💥" },
-  double_bust: { label: "DOUBLE BUST",  color: "#e83a4a", emoji: "💥" },
-  dealer_win:  { label: "DEALER WINS",  color: "#e83a4a", emoji: "😔" },
+const CHIP_STYLES: Record<number, { bg: string; ring: string; text: string }> = {
+  50:   { bg: "oklch(0.38 0.14 230)", ring: "#60a5fa", text: "50" },
+  100:  { bg: "oklch(0.40 0.20 22)",  ring: "#f87171", text: "100" },
+  200:  { bg: "oklch(0.28 0.10 270)", ring: "#a78bfa", text: "200" },
+  500:  { bg: "oklch(0.36 0.13 145)", ring: "#4ade80", text: "500" },
+  1000: { bg: "oklch(0.35 0.12 60)",  ring: "#fbbf24", text: "1K" },
 };
 
+function ChipButton({ amount, selected, onClick, disabled }: {
+  amount: number; selected: boolean; onClick: () => void; disabled: boolean;
+}) {
+  const s = CHIP_STYLES[amount] ?? CHIP_STYLES[100];
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className="relative flex items-center justify-center rounded-full font-black select-none flex-shrink-0"
+      style={{ width: 56, height: 56, background: s.bg, border: `2.5px solid ${s.ring}`,
+        boxShadow: selected ? `0 0 18px ${s.ring}70,0 5px 14px rgba(0,0,0,0.5)` : "0 3px 8px rgba(0,0,0,0.4)",
+        transform: selected ? "translateY(-6px) scale(1.1)" : "translateY(0) scale(1)",
+        transition: "transform 0.18s cubic-bezier(0.22,1,0.36,1),box-shadow 0.18s ease",
+        opacity: disabled ? 0.35 : 1 }}>
+      <div className="absolute inset-[4px] rounded-full pointer-events-none"
+        style={{ border: `1.5px dashed ${s.ring}50` }} />
+      <span className="text-white text-[12px] font-black relative z-10 leading-none">{s.text}</span>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types / constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface GameState {
+  sessionId: string; playerHand: Card[]; dealerHand: Card[];
+  playerScore: number; dealerScore: number;
+  status: string; net: number; settled: boolean; bet: number;
+}
+const BET_PRESETS = [50, 100, 200, 500, 1000];
+const STATUS_INFO: Record<string, { label: string; color: string; emoji: string }> = {
+  blackjack:   { label: "BLACKJACK!!", color: "#fbbf24", emoji: "🎊" },
+  player_win:  { label: "YOU WIN!",    color: "#4ade80", emoji: "🎉" },
+  push:        { label: "PUSH",        color: "#94a3b8", emoji: "🤝" },
+  player_bust: { label: "BUST",        color: "#f87171", emoji: "💥" },
+  double_bust: { label: "DOUBLE BUST", color: "#f87171", emoji: "💥" },
+  dealer_win:  { label: "DEALER WINS", color: "#f87171", emoji: "😔" },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BlackjackGame
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function BlackjackGame({ initialBalance }: { initialBalance: number }) {
-  const [balance,   setBalance]   = useState(initialBalance);
-  const [bet,       setBet]       = useState(100);
-  const [game,      setGame]      = useState<GameState | null>(null);
-  const [loading,   setLoading]   = useState<string | null>(null); // 'deal'|'hit'|'stand'|'double'
-  const [totalNet,  setTotalNet]  = useState(0);   // このセッションの累計
+  const [balance,  setBalance]  = useState(initialBalance);
+  const [bet,      setBet]      = useState(100);
+  const [game,     setGame]     = useState<GameState | null>(null);
+  const [loading,  setLoading]  = useState<string | null>(null);
+  const [totalNet, setTotalNet] = useState(0);
 
-  // ベット画面 or ゲーム中
-  const phase = !game ? "bet" : game.settled ? "result" : "playing";
+  const prevSettled = useRef(false);
+  if (game?.settled) prevSettled.current = true;
+  if (!game)         prevSettled.current = false;
 
-  // ── ゲーム開始 ─────────────────────────────────────────
+  const phase     = !game ? "bet" : game.settled ? "result" : "playing";
+  const isWin     = game ? ["blackjack","player_win"].includes(game.status) : false;
+  const isBust    = game ? ["player_bust","double_bust"].includes(game.status) : false;
+  const canDouble = phase === "playing" && game?.playerHand.length === 2 && balance >= (game?.bet ?? 0);
+
+  // ディーラーの表情（ゲーム結果に応じて変化）
+  // 画像: /public/dealer-tsucchi.jpg / dealer-tsucchi-win.jpg / dealer-tsucchi-lose.jpg
+  const dealerMood = !game?.settled ? "neutral"
+    : ["dealer_win","player_bust","double_bust"].includes(game.status) ? "win"
+    : game.status === "push" ? "push"
+    : "lose";
+
+  const DEALER_IMG: Record<string, string> = {
+    neutral: "/dealer-tsucchi.jpg",
+    win:     "/dealer-tsucchi-win.jpg",
+    lose:    "/dealer-tsucchi-lose.jpg",
+    push:    "/dealer-tsucchi.jpg",
+  };
+
   const handleDeal = useCallback(async () => {
     if (bet > balance) return;
     setLoading("deal");
     try {
-      const res  = await fetch("/api/blackjack/start", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bet }),
-      });
+      const res  = await fetch("/api/blackjack/start", { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bet }) });
       const data = await res.json();
-      if (!res.ok) { alert(data.error); return; }
-      setGame(data);
+      if (!res.ok) { alert(data.error ?? "エラーが発生しました"); return; }
+      setGame({ ...data, settled: data.settled ?? false });
       setBalance(data.balance);
-    } finally { setLoading(null); }
+    } catch (err) { console.error("[BJ deal]", err); alert("通信エラーが発生しました。再度お試しください。"); }
+    finally { setLoading(null); }
   }, [bet, balance]);
 
-  // ── アクション（ヒット/スタンド/ダブル）──────────────────
   const handleAction = useCallback(async (action: "hit" | "stand" | "double") => {
     if (!game) return;
     setLoading(action);
     try {
-      const res  = await fetch("/api/blackjack/action", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: game.sessionId, action }),
-      });
+      const res  = await fetch("/api/blackjack/action", { method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: game.sessionId, action }) });
       const data = await res.json();
-      if (!res.ok) { alert(data.error); return; }
+      if (!res.ok) { alert(data.error ?? "エラーが発生しました"); return; }
       setGame((prev) => ({ ...prev!, ...data }));
       if (data.settled) {
         setTotalNet((p) => p + (data.net as number));
-        // balance を再取得する代わりに概算
-        const totalBet = action === "double" ? game.net : 0; // ダブルは追加ベット分調整不要(サーバー側で処理済み)
-        setBalance((b) => b + (data.net > 0 ? data.net + game.net : 0) + totalBet);
+        if (data.balance !== undefined) setBalance(data.balance);
       }
-    } finally { setLoading(null); }
+    } catch (err) { console.error("[BJ action]", err); alert("通信エラーが発生しました。再度お試しください。"); }
+    finally { setLoading(null); }
   }, [game]);
 
-  // ── 次のゲーム ──────────────────────────────────────────
   const handleNext = useCallback(async () => {
-    // 最新残高取得
-    try {
-      const res = await fetch("/api/me/balance");
-      if (res.ok) {
-        const json = await res.json();
-        setBalance(json.chip_balance);
-      }
-    } catch { /* ignore */ }
+    try { const res = await fetch("/api/me/balance"); if (res.ok) { const j = await res.json(); setBalance(j.chip_balance); } }
+    catch { /* ignore */ }
     setGame(null);
   }, []);
 
-  const canDouble = phase === "playing" && game?.playerHand.length === 2 && balance >= (game?.net ?? 0);
-
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "radial-gradient(ellipse at 50% 0%, oklch(0.12 0.025 145) 0%, oklch(0.06 0.01 22) 70%)" }}>
+    // h-[100dvh] 固定 + overflow-hidden でスクロール完全禁止
+    <div className="flex flex-col select-none overflow-hidden"
+      style={{ height: "100dvh",
+        background: "radial-gradient(ellipse 120% 70% at 50% 30%,oklch(0.18 0.07 145) 0%,oklch(0.07 0.02 145) 55%,oklch(0.04 0.01 22) 100%)" }}>
 
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between px-5 py-4">
-        <div>
-          <p className="text-[10px] font-black tracking-[0.2em] uppercase text-muted-foreground">Blackjack</p>
-          <p className="text-sm font-black text-white">vs. <span style={{ color: "#facc15" }}>つっちー</span></p>
+      {/* ══ ヘッダー（flex-shrink-0） ══════════════════════════════ */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-1">
+        <Link href="/home" className="interactive p-1" style={{ color: "oklch(1 0 0 / 40%)" }}>
+          <ChevronLeft size={18} />
+        </Link>
+        <div className="text-center leading-tight">
+          <p className="text-[8px] font-black tracking-[0.3em] uppercase" style={{ color: "oklch(0.82 0.18 85 / 60%)" }}>
+            ✦ BLACKJACK ✦
+          </p>
+          <p className="text-[9px] font-bold" style={{ color: "oklch(1 0 0 / 40%)" }}>
+            vs. <span style={{ color: "#fbbf24" }}>つっちー</span>
+          </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-muted-foreground">残高</p>
-          <p className="text-lg font-black tabular-nums text-white">{balance.toLocaleString()}
-            <span className="text-xs font-bold text-muted-foreground ml-0.5">chip</span>
+          <p className="text-[8px]" style={{ color: "oklch(1 0 0 / 35%)" }}>残高</p>
+          <p className="text-[15px] font-black tabular-nums text-white leading-none">
+            {balance.toLocaleString()}
+            <span className="text-[9px] font-bold ml-0.5" style={{ color: "oklch(1 0 0 / 38%)" }}>chip</span>
           </p>
         </div>
       </div>
 
-      {/* ディーラー */}
-      <div className="px-5 py-4 space-y-3">
-        {/* つっちーアバター */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, oklch(0.25 0.04 145) 0%, oklch(0.15 0.02 145) 100%)", border: "2px solid oklch(0.45 0.12 145 / 50%)", boxShadow: "0 0 16px oklch(0.45 0.12 145 / 30%)" }}
-          >
-            {/* つっちーの画像プレースホルダー（後で /dealer-tsucchi.png に差し替え） */}
-            🃏
+      {/* ══ テーブル本体（flex-1 / min-h-0 必須）══════════════════ */}
+      {/*
+        構造: ディーラー行 → セパレータ → プレイヤー行 → フェーズコンテンツ → flex-1 余白
+        ポイント: flex-1余白はコンテンツの後ろに置く（ボタンとカードの間に入れない）
+      */}
+      <div className="flex-1 flex flex-col min-h-0 px-4">
+
+        {/* ── ディーラー行（アバター左・カード・スコア右 = 1行）── */}
+        {/* ── ディーラー（アイコン上・カード下）── */}
+        <div className="flex-shrink-0 pt-2 pb-1">
+          {/* アイコン行（上）
+              画像: /public/dealer-tsucchi.jpg / dealer-tsucchi-win.jpg / dealer-tsucchi-lose.jpg */}
+          <div className="flex items-center gap-2.5 mb-2">
+            <div
+              key={dealerMood}
+              className="w-12 h-12 rounded-full overflow-hidden relative flex-shrink-0"
+              style={{
+                background: "linear-gradient(135deg,oklch(0.28 0.06 145) 0%,oklch(0.16 0.03 145) 100%)",
+                border: dealerMood === "win"  ? "2px solid #fbbf24aa"
+                      : dealerMood === "lose" ? "2px solid #f87171aa"
+                      : "2px solid oklch(0.42 0.10 145 / 50%)",
+                boxShadow: dealerMood === "win"  ? "0 0 14px #fbbf2455"
+                         : dealerMood === "lose" ? "0 0 14px #f8717145"
+                         : "0 0 10px oklch(0.35 0.10 145 / 28%)",
+                animation: dealerMood !== "neutral" ? "bj-chip-bounce 0.5s cubic-bezier(0.22,1,0.36,1)" : undefined,
+              }}>
+              <img src={DEALER_IMG[dealerMood]} alt="つっちー" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <p className="text-[11px] font-black text-white leading-none">つっちー</p>
+              <p className="text-[9px]" style={{ color: "oklch(1 0 0 / 40%)" }}>Dealer</p>
+            </div>
+            {game && <div className="ml-auto"><ScoreBadge score={game.dealerScore} hidden={!game.settled} /></div>}
           </div>
-          <div>
-            <p className="font-black text-white">つっちー</p>
-            <p className="text-[10px] text-muted-foreground">Dealer</p>
+          {/* カード行（下）*/}
+          <div className="flex gap-2 flex-wrap items-end min-h-[84px] pl-1">
+            {game ? (
+              <>
+                <PlayingCard key="d-0" card={game.dealerHand[0]} delay={0} />
+                {game.settled
+                  ? game.dealerHand.slice(1).map((card, i) => (
+                      <PlayingCard key={`d-s-${i+1}`} card={card} delay={i * 0.07} flipReveal={i === 0} />
+                    ))
+                  : <PlayingCard key="d-hidden" card={game.dealerHand[0]} hidden delay={0.1} />}
+              </>
+            ) : (
+              <p className="text-[10px] font-black tracking-widest self-center"
+                style={{ color: "oklch(1 0 0 / 14%)" }}>— DEALER —</p>
+            )}
           </div>
         </div>
 
-        {/* ディーラーの手札 */}
-        {game && (
-          <Hand
-            cards={game.dealerHand}
-            score={game.dealerScore}
-            label="DEALER"
-            hideSecond={!game.settled}
-          />
-        )}
-      </div>
+        {/* ── セパレータ ── */}
+        <div className="flex-shrink-0 flex items-center justify-center my-1" style={{ height: 18 }}>
+          <div className="w-full h-px" style={{ background: "oklch(1 0 0 / 8%)" }} />
+          {phase === "playing" && (
+            <div className="absolute px-3 py-[2px] rounded-full text-[8px] font-black tracking-widest"
+              style={{ background: "oklch(0.12 0.04 145 / 90%)", border: "1px solid oklch(1 0 0 / 10%)",
+                color: "oklch(1 0 0 / 38%)", backdropFilter: "blur(6px)" }}>
+              BET {(game?.bet ?? bet).toLocaleString()} chip
+            </div>
+          )}
+        </div>
 
-      {/* テーブル中央 */}
-      <div className="flex-1 px-5 flex flex-col justify-center gap-6">
+        {/* ── プレイヤー（カード上・アイコン下）── */}
+        <div className="flex-shrink-0 pt-1 pb-2">
+          {/* カード行（上）*/}
+          <div className="flex gap-2 flex-wrap items-end min-h-[84px] pl-1 mb-2"
+            style={{ animation: isBust && game?.settled ? "bj-bust-shake 0.55s ease 0.1s" : undefined }}>
+            {game ? (
+              game.playerHand.map((card, i) => (
+                <PlayingCard key={`p-${i}-${game.playerHand.length}`} card={card} delay={i * 0.08} />
+              ))
+            ) : (
+              <p className="text-[10px] font-black tracking-widest self-center"
+                style={{ color: "oklch(1 0 0 / 14%)" }}>— PLAYER —</p>
+            )}
+          </div>
+          {/* アイコン行（下）*/}
+          <div className="flex items-center gap-2.5">
+            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center text-xl"
+              style={{ background: "oklch(0.20 0.04 270 / 40%)", border: "2px solid oklch(0.45 0.10 270 / 35%)" }}>
+              🎮
+            </div>
+            <div>
+              <p className="text-[11px] font-black text-white leading-none">YOU</p>
+              <p className="text-[9px]" style={{ color: "oklch(1 0 0 / 40%)" }}>Player</p>
+            </div>
+            {game && <div className="ml-auto"><ScoreBadge score={game.playerScore} /></div>}
+          </div>
+        </div>
 
-        {/* ── ベット画面 ── */}
+        {/* ── フェーズコンテンツ（カードのすぐ下に配置）── */}
+        {/* ポイント: ここに直接置くことでカード↔ボタン間の余白をゼロにする */}
+
+        {/* ベット画面 */}
         {phase === "bet" && (
-          <div className="space-y-6 animate-scale-in">
+          <div className="flex-shrink-0 flex flex-col gap-3 pt-1 animate-scale-in">
             {totalNet !== 0 && (
-              <p className="text-center text-sm font-bold"
-                style={{ color: totalNet > 0 ? "#4ade80" : "#e83a4a" }}>
-                今回の合計: {totalNet > 0 ? "+" : ""}{totalNet.toLocaleString()} chip
+              <p className="text-center text-[11px] font-black"
+                style={{ color: totalNet > 0 ? "#4ade80" : "#f87171" }}>
+                セッション合計: {totalNet > 0 ? "+" : ""}{totalNet.toLocaleString()} chip
               </p>
             )}
-            <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">
-                BET AMOUNT
-              </p>
+            <div className="space-y-2">
+              <p className="text-[8px] font-black tracking-[0.25em] uppercase text-center"
+                style={{ color: "oklch(1 0 0 / 35%)" }}>BET AMOUNT</p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {BET_PRESETS.filter((p) => p <= balance).map((p) => (
-                  <button key={p} onClick={() => setBet(p)}
-                    className="px-4 py-2 rounded-xl font-black text-sm interactive"
-                    style={{
-                      background: bet === p ? "var(--primary)" : "oklch(1 0 0 / 8%)",
-                      color: bet === p ? "white" : "var(--muted-foreground)",
-                      boxShadow: bet === p ? "var(--shadow-neon)" : undefined,
-                      border: `1px solid ${bet === p ? "var(--primary)" : "oklch(1 0 0 / 15%)"}`,
-                    }}>
-                    {p.toLocaleString()}
-                  </button>
+                  <ChipButton key={p} amount={p} selected={bet === p} onClick={() => setBet(p)} disabled={!!loading} />
                 ))}
-                {balance > 0 && (
-                  <button onClick={() => setBet(balance)}
-                    className="px-4 py-2 rounded-xl font-black text-sm interactive"
-                    style={{
-                      background: bet === balance ? "var(--primary)" : "oklch(1 0 0 / 8%)",
-                      color: bet === balance ? "white" : "var(--muted-foreground)",
-                      border: `1px solid ${bet === balance ? "var(--primary)" : "oklch(1 0 0 / 15%)"}`,
-                    }}>
-                    ALL IN
+                {balance > 0 && !BET_PRESETS.includes(balance) && (
+                  <button onClick={() => setBet(balance)} disabled={!!loading}
+                    className="relative flex items-center justify-center rounded-full font-black flex-shrink-0"
+                    style={{ width: 56, height: 56,
+                      background: bet === balance ? "oklch(0.30 0.06 60)" : "oklch(0.15 0.02 22)",
+                      border: `2.5px solid ${bet === balance ? "#fbbf24" : "oklch(1 0 0 / 20%)"}`,
+                      boxShadow: bet === balance ? "0 0 16px #fbbf2445,0 5px 14px rgba(0,0,0,0.5)" : "0 3px 8px rgba(0,0,0,0.4)",
+                      transform: bet === balance ? "translateY(-6px) scale(1.1)" : undefined,
+                      transition: "transform 0.18s,box-shadow 0.18s",
+                      opacity: !!loading ? 0.35 : 1 }}>
+                    <div className="absolute inset-[4px] rounded-full"
+                      style={{ border: `1.5px dashed ${bet === balance ? "#fbbf2455" : "oklch(1 0 0 / 15%)"}` }} />
+                    <span className="text-white text-[10px] font-black z-10 leading-none">ALL<br />IN</span>
                   </button>
                 )}
               </div>
-              <p className="text-center text-2xl font-black text-white">
-                {bet.toLocaleString()} <span className="text-sm text-muted-foreground">chip</span>
+              <p className="text-center text-[28px] font-black text-white tabular-nums leading-none">
+                {bet.toLocaleString()}
+                <span className="text-[12px] font-bold ml-1" style={{ color: "oklch(1 0 0 / 40%)" }}>chip</span>
               </p>
             </div>
-
-            <button
-              onClick={handleDeal}
-              disabled={!!loading || bet > balance || balance === 0}
-              className="w-full py-4 rounded-2xl font-black text-lg text-white interactive"
-              style={{ background: "linear-gradient(135deg, oklch(0.40 0.15 145) 0%, oklch(0.28 0.10 145) 100%)", boxShadow: "0 0 24px oklch(0.40 0.15 145 / 40%)" }}
-            >
+            <button onClick={handleDeal} disabled={!!loading || bet > balance || balance === 0}
+              className="py-[15px] rounded-2xl font-black text-[17px] text-white interactive relative overflow-hidden"
+              style={{ background: "linear-gradient(135deg,oklch(0.75 0.18 85) 0%,oklch(0.58 0.20 75) 100%)",
+                boxShadow: "0 0 22px oklch(0.75 0.18 85 / 40%),0 5px 16px rgba(0,0,0,0.4)",
+                letterSpacing: "0.18em" }}>
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: "linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.20) 50%,transparent 60%)",
+                  animation: !loading ? "shimmer-sweep 2.5s ease 1s infinite" : undefined }} />
               {loading === "deal" ? <Loader2 size={20} className="animate-spin mx-auto" /> : "DEAL"}
             </button>
           </div>
         )}
 
-        {/* ── プレイヤー手札 ── */}
-        {game && (
-          <Hand cards={game.playerHand} score={game.playerScore} label="YOUR HAND" />
+        {/* ゲーム中アクション */}
+        {phase === "playing" && (
+          <div className="flex-shrink-0 flex flex-col gap-2 pt-3 pb-4">
+            {canDouble && (
+              <button onClick={() => handleAction("double")} disabled={!!loading}
+                className="w-full py-[10px] rounded-xl font-black text-[12px] interactive"
+                style={{ background: "oklch(0.28 0.08 60 / 28%)",
+                  border: "1.5px solid oklch(0.75 0.18 60 / 38%)", color: "#fbbf24" }}>
+                {loading === "double"
+                  ? <Loader2 size={14} className="animate-spin mx-auto" />
+                  : `DOUBLE DOWN  +${(game?.bet ?? 0).toLocaleString()} chip`}
+              </button>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => handleAction("hit")} disabled={!!loading}
+                className="flex-1 py-[15px] rounded-2xl font-black text-[19px] text-white interactive"
+                style={{ background: "linear-gradient(135deg,oklch(0.50 0.24 22) 0%,oklch(0.35 0.20 22) 100%)",
+                  boxShadow: "var(--shadow-neon),0 5px 14px rgba(0,0,0,0.4)" }}>
+                {loading === "hit" ? <Loader2 size={18} className="animate-spin mx-auto" /> : "HIT"}
+              </button>
+              <button onClick={() => handleAction("stand")} disabled={!!loading}
+                className="flex-1 py-[15px] rounded-2xl font-black text-[19px] text-white interactive"
+                style={{ background: "linear-gradient(135deg,oklch(0.32 0.10 235) 0%,oklch(0.22 0.07 235) 100%)",
+                  boxShadow: "0 0 16px oklch(0.32 0.10 235 / 38%),0 5px 14px rgba(0,0,0,0.4)" }}>
+                {loading === "stand" ? <Loader2 size={18} className="animate-spin mx-auto" /> : "STAND"}
+              </button>
+            </div>
+          </div>
         )}
 
-        {/* ── 結果 ── */}
+        {/* 結果画面 */}
         {phase === "result" && game && (() => {
           const info = STATUS_INFO[game.status] ?? { label: game.status, color: "white", emoji: "—" };
           return (
-            <div className="space-y-4 animate-scale-in text-center">
-              <div>
-                <p className="text-5xl mb-2">{info.emoji}</p>
-                <p className="text-3xl font-black" style={{ color: info.color }}>{info.label}</p>
-                <p className="text-xl font-black mt-1" style={{ color: game.net >= 0 ? "#4ade80" : "#e83a4a" }}>
-                  {game.net >= 0 ? "+" : ""}{game.net.toLocaleString()} chip
+            <div className="flex-shrink-0 flex flex-col items-center gap-2.5 pt-2">
+              <div className="w-full rounded-2xl px-4 py-4 text-center relative overflow-hidden"
+                style={{ animation: "bj-result-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
+                  background: isWin
+                    ? "linear-gradient(135deg,oklch(0.22 0.07 85) 0%,oklch(0.14 0.04 85) 100%)"
+                    : isBust ? "linear-gradient(135deg,oklch(0.18 0.07 22) 0%,oklch(0.10 0.03 22) 100%)"
+                    : "oklch(1 0 0 / 5%)",
+                  border: `1.5px solid ${info.color}38`,
+                  boxShadow: isWin ? `0 0 36px ${info.color}28,0 8px 28px rgba(0,0,0,0.4)` : "0 5px 20px rgba(0,0,0,0.3)" }}>
+                {isWin && (
+                  <>
+                    <div className="absolute inset-0 rounded-2xl pointer-events-none"
+                      style={{ animation: "bj-win-ring 1s ease-out 0.3s infinite", border: `2px solid ${info.color}40` }} />
+                    <div className="absolute inset-0 rounded-2xl pointer-events-none"
+                      style={{ animation: "bj-win-ring 1s ease-out 0.65s infinite", border: `1px solid ${info.color}22` }} />
+                  </>
+                )}
+
+                {/* ── つっちーアイコン（大）── */}
+                <div className="flex justify-center mb-2 relative z-10"
+                  style={{ animation: "bj-result-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.05s both" }}>
+                  <div className="relative">
+                    {/* リングエフェクト */}
+                    <div className="absolute inset-0 rounded-full pointer-events-none"
+                      style={{ animation: "bj-win-ring 1.2s ease-out 0.4s infinite",
+                        border: `3px solid ${info.color}50` }} />
+                    <div className="w-20 h-20 rounded-full overflow-hidden relative flex items-center justify-center"
+                      style={{
+                        background: "linear-gradient(135deg,oklch(0.28 0.06 145) 0%,oklch(0.16 0.03 145) 100%)",
+                        border: dealerMood === "win"  ? `3px solid #fbbf24` : dealerMood === "lose" ? `3px solid #f87171` : `3px solid oklch(0.42 0.10 145 / 60%)`,
+                        boxShadow: dealerMood === "win"  ? "0 0 24px #fbbf2460,0 8px 20px rgba(0,0,0,0.5)"
+                                 : dealerMood === "lose" ? "0 0 24px #f8717150,0 8px 20px rgba(0,0,0,0.5)"
+                                 : "0 8px 20px rgba(0,0,0,0.5)",
+                      }}>
+                      <img src={DEALER_IMG[dealerMood]} alt="つっちー"
+                        className="absolute inset-0 w-full h-full object-cover" />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[20px] font-black relative z-10" style={{ color: info.color, letterSpacing: "0.05em" }}>
+                  {info.label}
                 </p>
+                <p className="text-[32px] font-black mt-1 relative z-10 tabular-nums"
+                  style={{ color: game.net >= 0 ? "#4ade80" : "#f87171",
+                    animation: "bj-net-pop 0.4s cubic-bezier(0.22,1,0.36,1) 0.2s both" }}>
+                  {game.net >= 0 ? "+" : ""}{game.net.toLocaleString()}
+                  <span className="text-[12px] font-bold ml-1" style={{ color: "oklch(1 0 0 / 40%)" }}>chip</span>
+                </p>
+                {totalNet !== 0 && (
+                  <p className="text-[9px] mt-1 relative z-10" style={{ color: "oklch(1 0 0 / 30%)" }}>
+                    累計: {totalNet > 0 ? "+" : ""}{totalNet.toLocaleString()} chip
+                  </p>
+                )}
               </div>
-              <button
-                onClick={handleNext}
-                className="flex items-center gap-2 mx-auto px-6 py-3 rounded-2xl font-black text-white interactive"
-                style={{ background: "oklch(1 0 0 / 10%)", border: "1px solid oklch(1 0 0 / 20%)" }}
-              >
-                <RefreshCw size={16} /> もう一度
+              <button onClick={handleNext}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-white interactive text-[12px]"
+                style={{ background: "oklch(1 0 0 / 8%)", border: "1.5px solid oklch(1 0 0 / 15%)" }}>
+                <RefreshCw size={13} /> もう一度
               </button>
             </div>
           );
         })()}
-      </div>
 
-      {/* ── アクションボタン ── */}
-      {phase === "playing" && (
-        <div className="px-5 pb-8 pt-4 space-y-3">
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleAction("hit")}
-              disabled={!!loading}
-              className="flex-1 py-4 rounded-2xl font-black text-lg text-white interactive"
-              style={{ background: "linear-gradient(135deg, oklch(0.50 0.22 22) 0%, oklch(0.35 0.18 22) 100%)", boxShadow: "var(--shadow-neon)" }}
-            >
-              {loading === "hit" ? <Loader2 size={18} className="animate-spin mx-auto" /> : "HIT"}
-            </button>
-            <button
-              onClick={() => handleAction("stand")}
-              disabled={!!loading}
-              className="flex-1 py-4 rounded-2xl font-black text-lg text-white interactive"
-              style={{ background: "linear-gradient(135deg, oklch(0.32 0.08 220) 0%, oklch(0.22 0.06 220) 100%)", boxShadow: "0 0 16px oklch(0.32 0.08 220 / 30%)" }}
-            >
-              {loading === "stand" ? <Loader2 size={18} className="animate-spin mx-auto" /> : "STAND"}
-            </button>
-          </div>
-          {canDouble && (
-            <button
-              onClick={() => handleAction("double")}
-              disabled={!!loading}
-              className="w-full py-3 rounded-2xl font-black text-sm text-white interactive"
-              style={{ background: "oklch(0.45 0.15 60 / 30%)", border: "1px solid oklch(0.45 0.15 60 / 40%)", color: "#facc15" }}
-            >
-              {loading === "double" ? <Loader2 size={16} className="animate-spin mx-auto" /> : `DOUBLE DOWN (+${(game?.net ?? 0).toLocaleString()} chip)`}
-            </button>
-          )}
-          {/* ベット表示 */}
-          <p className="text-center text-[10px] text-muted-foreground">
-            BET: {game?.net !== undefined ? Math.abs(0).toLocaleString() : bet.toLocaleString()} chip
-          </p>
-        </div>
-      )}
+        {/* ══ flex-1 余白はコンテンツの後ろ ══════════════════════════
+            ここに置くことで、カード↔ボタン間に余白が発生しない。
+            余白はボタンの下（画面下部）に集まる。              */}
+        <div className="flex-1" />
+      </div>
     </div>
   );
 }

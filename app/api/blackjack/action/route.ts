@@ -8,6 +8,7 @@ import {
 type Action = "hit" | "stand" | "double";
 
 export async function POST(request: NextRequest) {
+  try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -81,29 +82,52 @@ export async function POST(request: NextRequest) {
     newStatus    = resultToStatus(result);
   }
 
-  const net = result !== null ? calcNetChips(result, bet) : 0;
+  // double の場合は totalBet 基準で net を算出（double_bust は calcNetChips 内で *2 済み）
+  const netBet = action === "double" && result !== "double_bust" ? bet * 2 : bet;
+  const net = result !== null ? calcNetChips(result, netBet) : 0;
   const settled = result !== null;
 
-  // セッション更新
+  // セッション更新（JSONB カラムは配列をそのまま渡す）
   await adminClient.from("blackjack_sessions").update({
-    player_hand: JSON.stringify(playerHand),
-    dealer_hand: JSON.stringify(dealerHand),
-    deck:        JSON.stringify(deck),
+    player_hand: playerHand as unknown,
+    dealer_hand: dealerHand as unknown,
+    deck:        deck        as unknown,
     status:      newStatus,
     net_chips:   net,
     settled,
   }).eq("id", session_id);
 
-  // チップ決済
+  // チップ決済 + ランキング記録
+  // chip_balance は direct UPDATE で管理（トリガーは blackjack type をスキップ）
+  // → docs/migrations/2026-05-14_blackjack_trigger.sql を Supabase で実行すること
+  let balance: number | undefined;
   if (settled && result) {
     const totalBet = action === "double" ? bet * 2 : bet;
-    const payout   = calcNetChips(result, totalBet) + totalBet; // 手元に戻る額
-    if (payout > 0) {
-      await adminClient.from("chip_transactions").insert({
-        type: "blackjack" as const, to_user_id: user.id, from_user_id: null,
-        amount: payout,
-        memo: `🃏 BJ ${statusLabel(newStatus)}`,
-      });
+    const payout   = calcNetChips(result, totalBet) + totalBet; // 手元に戻る額（負=0）
+
+    // 現在の残高取得（ベット・ダブル分は既に直接 UPDATE 済み）
+    const { data: ud } = await adminClient.from("users").select("chip_balance").eq("id", user.id).single();
+    if (ud) {
+      if (payout > 0) {
+        // 払い戻し: chip_balance に直接加算
+        await adminClient.from("users")
+          .update({ chip_balance: ud.chip_balance + payout })
+          .eq("id", user.id);
+        balance = ud.chip_balance + payout;
+
+        // ランキング・履歴用に chip_transactions を記録
+        // （トリガーは blackjack type をスキップするため残高への影響なし）
+        try {
+          await adminClient.from("chip_transactions").insert({
+            type: "blackjack" as const, to_user_id: user.id, from_user_id: null,
+            amount: payout,
+            memo: `🃏 BJ ${statusLabel(newStatus)}`,
+          });
+        } catch { /* 記録失敗しても残高には影響しない */ }
+      } else {
+        // 負け: 残高変更なし（ベット時に引き済み）
+        balance = ud.chip_balance;
+      }
     }
   }
 
@@ -115,7 +139,12 @@ export async function POST(request: NextRequest) {
     status:      newStatus,
     net,
     settled,
+    balance,
   });
+  } catch (err) {
+    console.error("[BJ action]", err);
+    return NextResponse.json({ error: "サーバーエラーが発生しました" }, { status: 500 });
+  }
 }
 
 function determineWinner(player: Card[], dealer: Card[]): GameResult {

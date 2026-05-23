@@ -3,19 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { initLiff, lineLogin } from "@/lib/liff/client";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Loader2 } from "lucide-react";
 
 /**
  * LINE 自動ログイン:
- * - LIFFが構成されていなければ何も表示しない
- * - LIFFブラウザで開いていれば自動的にトークンをサーバーに送信してログイン
- * - 通常ブラウザでも「LINEでログイン」ボタンを表示
+ * - LIFF が未設定なら何も表示しない
+ * - isLoggedIn() が true なら自動でトークンを送信してログイン
+ *   （LINE アプリ内ブラウザ・通常ブラウザのリダイレクト後どちらも対応）
+ * - ログイン前なら「LINEでログイン」ボタンを表示
  */
 export function LineAutoLogin() {
   const router = useRouter();
-  const [enabled, setEnabled] = useState(false);
+  const [enabled,    setEnabled]    = useState(false);
   const [autoTrying, setAutoTrying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error,      setError]      = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,20 +26,20 @@ export function LineAutoLogin() {
       if (cancelled || !liff) return;
       setEnabled(true);
 
-      // If running inside LINE and already logged into LINE, auto-complete login
-      if (liff.isInClient() && liff.isLoggedIn()) {
+      // LINE アプリ内・通常ブラウザのリダイレクト後どちらも isLoggedIn() で判定
+      if (liff.isLoggedIn()) {
         setAutoTrying(true);
         try {
-          const profile = await liff.getProfile();
           const idToken = liff.getIDToken();
-          if (!idToken) return;
+          if (!idToken) { setAutoTrying(false); return; }
+          const profile = await liff.getProfile();
           const res = await fetch("/api/auth/line", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               idToken,
               displayName: profile.displayName,
-              pictureUrl: profile.pictureUrl,
+              pictureUrl:  profile.pictureUrl,
             }),
           });
           if (res.ok) {
@@ -47,8 +48,9 @@ export function LineAutoLogin() {
           } else {
             const data = await res.json().catch(() => ({}));
             setError(data.error ?? "LINEログイン失敗");
+            setAutoTrying(false);
           }
-        } finally {
+        } catch {
           setAutoTrying(false);
         }
       }
@@ -59,6 +61,7 @@ export function LineAutoLogin() {
   }, [router]);
 
   async function handleManualLogin() {
+    setError(null);
     try {
       await lineLogin();
     } catch (e) {
@@ -68,16 +71,25 @@ export function LineAutoLogin() {
 
   if (!enabled) return null;
 
+  if (autoTrying) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-3 text-sm"
+        style={{ color: "#06C755" }}>
+        <Loader2 size={16} className="animate-spin" />
+        LINEログイン中...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <button
         onClick={handleManualLogin}
-        disabled={autoTrying}
-        className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white interactive disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white interactive"
         style={{ background: "#06C755", boxShadow: "0 0 14px rgba(6,199,85,0.35)" }}
       >
         <MessageCircle size={18} />
-        {autoTrying ? "LINEログイン中..." : "LINEでログイン"}
+        LINEでログイン
       </button>
       {error && <p className="text-xs text-destructive text-center">{error}</p>}
     </div>
