@@ -69,30 +69,55 @@ export async function POST(request: NextRequest) {
   let needsBirthday = !existingUser?.birthday;
 
   if (!userId) {
-    // 3a) 新規 Supabase auth ユーザー作成
+    // 3a) 新規 Supabase auth ユーザー作成を試みる
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
       email:          syntheticEmail,
       password:       initialPassword,
       email_confirm:  true,
       user_metadata:  { line_user_id: lineUserId, line_display_name: displayName },
     });
-    if (createErr || !created.user) {
-      return NextResponse.json(
-        { error: createErr?.message ?? "ユーザー作成失敗" },
-        { status: 500 },
-      );
-    }
-    userId        = created.user.id;
-    needsBirthday = true;
 
-    // 3b) public.users 行を作成（birthday は後でオンボーディングで設定）
-    await adminClient.from("users").insert({
-      id:           userId,
-      nickname:     displayName ?? "LINEユーザー",
-      email_or_phone: syntheticEmail,
-      avatar_url:   pictureUrl,
-      line_user_id: lineUserId,
-    });
+    if (createErr) {
+      // "already registered" = 旧ログインで auth.users は存在するが
+      // public.users の line_user_id が NULL のケース → email_or_phone で紐付け
+      if (createErr.message.includes("already registered")) {
+        const { data: byEmail } = await adminClient
+          .from("users")
+          .select("id, birthday")
+          .eq("email_or_phone", syntheticEmail)
+          .single();
+
+        if (byEmail) {
+          userId        = byEmail.id;
+          needsBirthday = !byEmail.birthday;
+          // line_user_id と最新プロフィールを更新
+          await adminClient.from("users").update({
+            line_user_id: lineUserId,
+            ...(displayName ? { nickname:   displayName } : {}),
+            ...(pictureUrl  ? { avatar_url: pictureUrl  } : {}),
+          }).eq("id", userId);
+        } else {
+          // auth.users にあるが public.users が存在しない（異常系）→ サインインで ID を取得
+          return NextResponse.json({ error: "アカウントの状態が不正です。管理者にお問い合わせください。" }, { status: 500 });
+        }
+      } else {
+        return NextResponse.json({ error: createErr.message }, { status: 500 });
+      }
+    } else if (created.user) {
+      userId        = created.user.id;
+      needsBirthday = true;
+
+      // 3b) public.users 行を作成（birthday は後でオンボーディングで設定）
+      await adminClient.from("users").insert({
+        id:             userId,
+        nickname:       displayName ?? "LINEユーザー",
+        email_or_phone: syntheticEmail,
+        avatar_url:     pictureUrl,
+        line_user_id:   lineUserId,
+      });
+    } else {
+      return NextResponse.json({ error: "ユーザー作成失敗" }, { status: 500 });
+    }
   } else {
     // 3c) 既存ユーザー: LINE プロフィールを最新情報に更新
     await adminClient.from("users").update({
