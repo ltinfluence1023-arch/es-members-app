@@ -128,13 +128,17 @@ export async function POST(request: NextRequest) {
       userId        = created.user.id;
       needsBirthday = true;
 
-      await adminClient.from("users").insert({
+      const { error: insertErr } = await adminClient.from("users").insert({
         id:             userId,
         nickname:       displayName ?? "LINEユーザー",
         email_or_phone: syntheticEmail,
         avatar_url:     pictureUrl,
         line_user_id:   lineUserId,
       });
+      if (insertErr) {
+        // INSERT 失敗をログに残す（セッション発行は続行し、onboarding で UPSERT して補完）
+        console.error("[BJ auth/line] public.users INSERT failed:", insertErr.message);
+      }
     } else {
       return NextResponse.json({ error: "ユーザー作成失敗" }, { status: 500 });
     }
