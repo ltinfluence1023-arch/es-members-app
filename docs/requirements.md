@@ -163,7 +163,7 @@ MVP 開発版 / 2026年4月（v2: 2通貨モデル対応）
 
 ## 6. データベース要件
 
-DDL は `/docs/db-schema.sql` を参照。テーブル一覧:
+DDL は `/docs/setup/setup-all.sql` を参照（旧版は `/docs/archive/db-schema-v1.sql`）。テーブル一覧:
 
 - `users` — 顧客（chip_balance, point_balance を保持）
 - `admin_users` — 管理者・スタッフ
@@ -191,7 +191,7 @@ DDL は `/docs/db-schema.sql` を参照。テーブル一覧:
 | 1 | 開発環境準備 (VS Code, Git, Node.js, Claude Code, Supabase CLI) |
 | 2 | このドキュメントを `/docs/` に配置 |
 | 3 | Next.js + TypeScript + Tailwind プロジェクト初期構築 |
-| 4 | `/docs/db-schema.sql` を Supabase に適用 |
+| 4 | `/docs/setup/setup-all.sql` を Supabase に適用（手順: `/docs/setup/README.md`） |
 | 5 | 認証実装（顧客/管理者分離） |
 | 6 | 共通レイアウト（ボトムナビ + ハンバーガー）実装 |
 | 7 | 顧客MVP: トップ/QR/ランキング/クーポン/お知らせ |

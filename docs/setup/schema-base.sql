@@ -329,4 +329,3 @@ create policy "coupon_templates_admin_all" on coupon_templates for all using (is
 create policy "qr_tokens_self_read" on qr_tokens for select using (auth.uid() = user_id);
 create policy "qr_tokens_self_insert" on qr_tokens for insert with check (auth.uid() = user_id);
 
-select 'schema applied successfully' as result;

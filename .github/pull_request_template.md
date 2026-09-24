@@ -19,7 +19,7 @@
 ## DBマイグレーション
 
 - [ ] なし
-- [ ] あり → `docs/migrations/` に追加済み、Supabaseで実行済み
+- [ ] あり → `docs/migrations/` に追加済み、`scripts/build-setup-sql.sh` で `setup-all.sql` 再生成済み、Supabaseで実行済み
 
 ## 確認チェックリスト
 
