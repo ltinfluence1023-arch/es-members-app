@@ -22,7 +22,7 @@ Supabase プロジェクトを新しく作ったときの手順。
    2. SQL Editor で `create-master-admin.sql` を実行し、`role = admin` の行が出ることを確認
 
 3. **環境変数**（Project Settings → API）
-   以下を **ローカル `.env.local`・Vercel・es-poker** の3か所で更新する。
+   以下を **ローカル `.env.local`・Vercel** の2か所で更新する。
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`（秘密。チャット等に貼らない）

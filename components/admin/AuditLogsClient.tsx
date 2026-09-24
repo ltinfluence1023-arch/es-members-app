@@ -24,6 +24,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   point: "ポイント",
   staff: "スタッフ",
   notice: "お知らせ",
+  poker: "ポーカー",
   other: "その他",
 };
 
@@ -36,6 +37,7 @@ const CATEGORY_COLOR: Record<string, string> = {
   point: "var(--point)",
   staff: "#a78bfa",
   notice: "#34d399",
+  poker: "#22c55e",
   other: "var(--muted-foreground)",
 };
 

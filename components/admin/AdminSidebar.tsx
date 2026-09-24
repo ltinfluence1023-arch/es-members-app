@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Users, Ticket, Bell, LogOut, LayoutDashboard, QrCode,
   ScanLine, Menu, X, BarChart3, CalendarCheck, ShieldCheck, Coins,
-  Spade, ExternalLink, FileClock, Trophy,
+  Spade, FileClock, Trophy,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,12 @@ type NavItem = { href: string; icon: React.ElementType; label: string; masterOnl
 type NavGroup = { label: string; items: NavItem[] };
 
 const baseNavGroups: NavGroup[] = [
+  {
+    label: "ポーカー",
+    items: [
+      { href: "/admin/poker", icon: Spade, label: "テーブル管理" },
+    ],
+  },
   {
     label: "店舗",
     items: [
@@ -59,12 +65,10 @@ const masterNavGroup: NavGroup = {
   ],
 };
 
-const POKER_SYSTEM_URL = "https://es-poker.vercel.app/login";
 
 function SidebarContent({ onClose, isMaster, currentName }: { onClose?: () => void; isMaster: boolean; currentName: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [openingPoker, setOpeningPoker] = useState(false);
 
   const navGroups: NavGroup[] = isMaster
     ? [...baseNavGroups, masterNavGroup]
@@ -75,50 +79,6 @@ function SidebarContent({ onClose, isMaster, currentName }: { onClose?: () => vo
     await supabase.auth.signOut();
     router.push("/admin-login");
     router.refresh();
-  }
-
-  // Open poker management system with the current Supabase session (SSO handoff).
-  // Tokens are placed in the URL fragment so they don't hit server logs.
-  async function handleOpenPoker() {
-    setOpeningPoker(true);
-    try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      let url = POKER_SYSTEM_URL;
-      if (session?.access_token && session?.refresh_token) {
-        const params = new URLSearchParams({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-          expires_in: String(session.expires_in ?? 3600),
-          token_type: "bearer",
-          type: "magiclink",
-        });
-        url = `${POKER_SYSTEM_URL}#${params.toString()}`;
-      }
-
-      // PWA / standalone mode (iOS) blocks window.open(_blank) — use direct navigation.
-      // Detect standalone mode and pick the right strategy.
-      const isStandalone =
-        window.matchMedia?.("(display-mode: standalone)").matches ||
-        // @ts-expect-error iOS-specific
-        window.navigator.standalone === true;
-
-      onClose?.();
-
-      if (isStandalone) {
-        // Direct navigation (will open in default browser due to scope mismatch on iOS PWA)
-        window.location.href = url;
-      } else {
-        const newWindow = window.open(url, "_blank", "noopener,noreferrer");
-        // Fallback if popup was blocked
-        if (!newWindow) {
-          window.location.href = url;
-        }
-      }
-    } finally {
-      setOpeningPoker(false);
-    }
   }
 
   return (
@@ -166,21 +126,6 @@ function SidebarContent({ onClose, isMaster, currentName }: { onClose?: () => vo
           </div>
         ))}
 
-        {/* External: Poker management system */}
-        <div className="mb-2">
-          <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            外部システム
-          </p>
-          <button
-            onClick={handleOpenPoker}
-            disabled={openingPoker}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors disabled:opacity-50"
-          >
-            <Spade size={16} />
-            <span className="flex-1 text-left">ポーカー管理</span>
-            <ExternalLink size={12} className="text-muted-foreground" />
-          </button>
-        </div>
       </nav>
       <Separator />
       <button

@@ -7,12 +7,18 @@ import { toast } from "sonner";
 type Status = "loading" | "scanning" | "processing" | "error";
 type QrPayload = { type: "store_checkin" | "user_receive"; token?: string };
 
-export function AdminQRScanner() {
+/**
+ * onToken を渡すと、顧客マイQRのトークンを呼び出し元に渡す（ポーカー着席など）。
+ * 省略時は顧客詳細画面へ遷移する。onToken が throw した場合はエラー表示して再スキャン。
+ */
+export function AdminQRScanner({ onToken }: { onToken?: (token: string) => Promise<void> } = {}) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
   const [errorMsg, setErrorMsg] = useState("");
   const processingRef = useRef(false);
   const qrRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
+  const onTokenRef = useRef(onToken);
+  useEffect(() => { onTokenRef.current = onToken; }, [onToken]);
 
   useEffect(() => {
     let unmounted = false;
@@ -36,7 +42,9 @@ export function AdminQRScanner() {
             try {
               const payload: QrPayload = JSON.parse(decoded);
 
-              if (payload.type === "user_receive" && payload.token) {
+              if (payload.type === "user_receive" && payload.token && onTokenRef.current) {
+                await onTokenRef.current(payload.token);
+              } else if (payload.type === "user_receive" && payload.token) {
                 const res = await fetch("/api/admin/resolve-token", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
