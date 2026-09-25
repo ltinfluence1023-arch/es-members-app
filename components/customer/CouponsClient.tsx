@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { FEATURES } from "@/lib/features";
 
 type CouponTab = "available" | "used" | "exchange";
 
@@ -43,11 +44,12 @@ interface Props {
   userId: string;
 }
 
-const TABS: { key: CouponTab; label: string }[] = [
+const ALL_TABS: { key: CouponTab; label: string }[] = [
   { key: "available", label: "利用可能" },
   { key: "used",      label: "使用済み" },
   { key: "exchange",  label: "交換する" },
 ];
+const TABS = ALL_TABS.filter((t) => t.key !== "exchange" || FEATURES.points);
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" });

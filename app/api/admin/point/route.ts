@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 import { isMaster } from "@/lib/admin/auth";
 import { recordAudit } from "@/lib/admin/audit";
 
@@ -14,6 +15,7 @@ const schema = z.object({
 const DEFAULT_POINT_MEMO = "管理者操作";
 
 export async function POST(request: NextRequest) {
+  if (!FEATURES.points) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

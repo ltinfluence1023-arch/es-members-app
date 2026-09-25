@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { FEATURES } from "@/lib/features";
 import Link from "next/link";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -11,6 +12,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default async function PointHistoryPage() {
+  if (!FEATURES.points) redirect("/history");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");

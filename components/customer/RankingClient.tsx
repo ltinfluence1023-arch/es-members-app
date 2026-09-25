@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AvatarImage } from "@/components/customer/AvatarImage";
+import { FEATURES } from "@/lib/features";
 
 type RankTab =
   | "daily_chip" | "monthly_chip" | "yearly_chip"
@@ -20,7 +21,7 @@ interface RankingData {
 }
 
 type Category = "chip" | "visit" | "transfer" | "bj";
-const TABS: { key: RankTab; label: string; emoji: string; category: Category }[] = [
+const ALL_TABS: { key: RankTab; label: string; emoji: string; category: Category }[] = [
   // チップ増減
   { key: "daily_chip",       label: "本日",    emoji: "🔥", category: "chip" },
   { key: "monthly_chip",     label: "月間",    emoji: "🪙", category: "chip" },
@@ -38,12 +39,16 @@ const TABS: { key: RankTab; label: string; emoji: string; category: Category }[]
   { key: "bj_monthly",       label: "月間",    emoji: "🃏", category: "bj" },
   { key: "bj_total",         label: "累計",    emoji: "♠️", category: "bj" },
 ];
-const CATEGORIES: { key: Category; label: string }[] = [
+const ALL_CATEGORIES: { key: Category; label: string }[] = [
   { key: "chip",     label: "チップ" },
   { key: "visit",    label: "来店" },
   { key: "transfer", label: "送受" },
   { key: "bj",       label: "BJ" },
 ];
+// 送金が非公開の間は「送受」ランキングを出さない（lib/features.ts）
+const isVisible = (c: Category) => c !== "transfer" || FEATURES.transfer;
+const TABS = ALL_TABS.filter((t) => isVisible(t.category));
+const CATEGORIES = ALL_CATEGORIES.filter((c) => isVisible(c.key));
 
 const REFRESH_SEC = 30;
 

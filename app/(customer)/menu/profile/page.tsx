@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { getAvatarColor, getAvatarUrl } from "@/lib/utils/avatar";
 import { Camera, ChevronLeft } from "lucide-react";
+import { FEATURES } from "@/lib/features";
 import Link from "next/link";
 
 const schema = z.object({
@@ -178,10 +179,10 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid gap-3 ${FEATURES.points ? "grid-cols-3" : "grid-cols-2"}`}>
         {[
           { label: "Chip",  value: profile.chip_balance.toLocaleString() },
-          { label: "PT",    value: profile.point_balance.toLocaleString() },
+          ...(FEATURES.points ? [{ label: "PT",    value: profile.point_balance.toLocaleString() }] : []),
           { label: "Visit", value: profile.total_visit_count.toLocaleString() },
         ].map(({ label, value }) => (
           <div key={label} className="card-elevated rounded-2xl p-4 text-center">

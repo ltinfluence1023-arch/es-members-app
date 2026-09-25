@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getCurrentPosition } from "@/lib/utils/getCurrentPosition";
+import { FEATURES } from "@/lib/features";
 
 type QrPayload = { type: "store_checkin" | "user_receive"; token?: string };
 type Status = "loading" | "scanning" | "processing" | "error";
@@ -47,10 +48,11 @@ export function ScannerView() {
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error);
-                toast.success(`チェックイン！ +${data.bonus} chip / +${data.pointBonus ?? 0} pt`);
+                toast.success(`チェックイン！ +${data.bonus} chip${data.pointBonus ? ` / +${data.pointBonus} pt` : ""}`);
                 router.push("/home");
                 router.refresh();
               } else if (payload.type === "user_receive" && payload.token) {
+                if (!FEATURES.transfer) throw new Error("お客様のマイQRはスタッフが読み取ります");
                 router.push(`/transfer/${payload.token}`);
               } else {
                 throw new Error("不明なQRコードです");

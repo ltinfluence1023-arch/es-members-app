@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { CouponsClient } from "@/components/customer/CouponsClient";
+import { FEATURES } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,9 @@ export default async function CouponsPage({
   if (!user) redirect("/login");
 
   const { tab } = await searchParams;
-  const activeTab: CouponTab = (tab as CouponTab) ?? "available";
+  const requested = (tab as CouponTab) ?? "available";
+  // ポイント交換は非公開の間は表示しない（lib/features.ts）
+  const activeTab: CouponTab = requested === "exchange" && !FEATURES.points ? "available" : requested;
 
   const adminClient = createAdminClient();
 
