@@ -51,7 +51,7 @@ const CHIP_TYPE_LABEL: Record<string, string> = {
   coupon: "クーポン",
   fee: "手数料",
   seat_out: "ポーカー退席",
-  withdraw: "出金",
+  withdraw: "ポーカー引き出し",
 };
 
 function todayJST(): string {

@@ -19,6 +19,7 @@ export type PointTransactionType =
 export type CouponSource = "admin_grant" | "point_exchange" | "ranking_reward";
 export type QrTokenPurpose = "user_receive" | "coupon_redeem";
 export type AdminRole = "admin" | "staff";
+export type PokerSessionStatus = "seated" | "closed";
 
 export interface Database {
   public: {
@@ -575,6 +576,51 @@ export interface Database {
         };
         Relationships: [];
       };
+      poker_tables: {
+        Row: {
+          id: string;
+          name: string;
+          seat_count: number;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          seat_count?: number;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          name?: string;
+          seat_count?: number;
+          sort_order?: number;
+          is_active?: boolean;
+        };
+        Relationships: [];
+      };
+      poker_sessions: {
+        Row: {
+          id: string;
+          table_id: string;
+          seat_no: number;
+          user_id: string;
+          status: PokerSessionStatus;
+          withdraw_total: number;
+          purchase_total: number;
+          cash_out: number | null;
+          seated_by: string | null;
+          closed_by: string | null;
+          seated_at: string;
+          closed_at: string | null;
+        };
+        // 書き込みは poker_seat_in / poker_add_chips / poker_seat_out 関数経由のみ
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -585,6 +631,21 @@ export interface Database {
       is_admin: {
         Args: { uid: string };
         Returns: boolean;
+      };
+      poker_seat_in: {
+        Args: {
+          p_table_id: string; p_seat_no: number; p_user_id: string;
+          p_withdraw: number; p_purchase: number; p_staff_id: string; p_memo: string;
+        };
+        Returns: string;
+      };
+      poker_add_chips: {
+        Args: { p_session_id: string; p_withdraw: number; p_purchase: number; p_staff_id: string; p_memo: string };
+        Returns: undefined;
+      };
+      poker_seat_out: {
+        Args: { p_session_id: string; p_cash_out: number; p_staff_id: string; p_memo: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;
@@ -606,3 +667,5 @@ export type CouponTemplate =
   Database["public"]["Tables"]["coupon_templates"]["Row"];
 export type Coupon = Database["public"]["Tables"]["coupons"]["Row"];
 export type QrToken = Database["public"]["Tables"]["qr_tokens"]["Row"];
+export type PokerTable = Database["public"]["Tables"]["poker_tables"]["Row"];
+export type PokerSession = Database["public"]["Tables"]["poker_sessions"]["Row"];

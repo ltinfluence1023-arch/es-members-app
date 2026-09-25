@@ -97,7 +97,7 @@ export default async function AdminCustomerDetailPage({
     coupon: "クーポン",
     fee: "手数料",
     seat_out: "ポーカー退席",
-    withdraw: "出金",
+    withdraw: "ポーカー引き出し",
   };
 
   const { data: pointTx } = await adminClient

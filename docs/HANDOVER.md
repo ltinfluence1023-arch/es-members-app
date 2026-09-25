@@ -12,9 +12,9 @@
 
 - **ユーザー側アプリ**: 来店者向け。QRチェックイン・チップ/ポイント・ランキング・クーポンなど
 - **管理画面**: 店舗スタッフ・マスター向け。顧客管理・チェックイン状況・チップ操作・クーポン発行・操作ログなど
-- **ポーカーディーラー専用システム** (`es-poker`): 別リポジトリで運用。**同じ Supabase プロジェクト** を共有
+- **ポーカー卓管理** (`/admin/poker`): ディーラーが卓の着席・チップ引き出し・購入・退席・レーキを管理
 
-3つのシステムが **1つの Supabase DB** を共有しており、データの整合性に注意が必要です。
+> 以前は外部の `es-poker`（別リポジトリ）が同じ DB を共有していたが、2026-09 に管理画面へ統合して廃止した。
 
 ---
 
@@ -291,7 +291,7 @@ details(jsonb), actor_id, actor_name, ip_address, user_agent, created_at
 | クーポン対象発行 | `/admin/coupons/issue` | マスターのみ（**セグメント検索**で一括配布） |
 | クーポン消込 | `/admin/coupons/redeem` | 全員 |
 | お知らせ | `/admin/notices` | 全員 |
-| ポーカー管理 | サイドバー → 外部 | SSO引き継ぎ（URL fragment 経由） |
+| ポーカー テーブル管理 | `/admin/poker` | 全員（卓の追加・名称変更・停止はマスターのみ） |
 
 ### 権限マトリクス
 
@@ -303,7 +303,8 @@ details(jsonb), actor_id, actor_name, ip_address, user_agent, created_at
 | 顧客削除 | ❌ | ✅ |
 | 手数料 追加 | ✅ | ✅ |
 | 手数料 減算 | ❌ | ✅ |
-| ポーカーレーキ | ❌ | ✅ |
+| ポーカー 着席・追加・退席・レーキ | ✅ | ✅ |
+| ポーカー 卓の追加・変更 | ❌ | ✅ |
 | クーポン発行 | ❌ | ✅ |
 | クーポン雛形管理 | ❌ | ✅ |
 | スタッフPW参照 | ❌ | ✅ |
@@ -362,10 +363,16 @@ netChangeByUser(txs): Record<userId, netDelta>
 - 管理アカウントは `public.admin_users` にのみあり（合成メール `xxx@admin.local`）
 - スタッフ作成時、トリガーで `public.users` にも行が作られるので **即座に削除している**（`/api/admin/staff/cleanup`）
 
-### ⚠️ ポーカーシステムが共有テーブルを使う
-- `chip_transactions` に独自タイプ `seat_out`, `withdraw` を投入
-- 型制約 (`chip_transactions_type_check`) を変更する際は **必ずポーカー側の型も含める**
-- ポーカー側は `chip_balance` を直接 UPDATE することがある（トリガーに依存しない）
+### ⚠️ ポーカーのチップの流れ（`docs/migrations/2026-09-24_poker.sql`）
+| 操作 | アカウント残高 | 記録 |
+|------|--------------|------|
+| 引き出し（着席・追加） | − | `chip_transactions` type=`withdraw`（from_user_id=顧客） |
+| 購入（現金） | 変化なし | `poker_sessions.purchase_total` のみ |
+| 退席（残チップ） | ＋ | `chip_transactions` type=`seat_out`（from_user_id=**受け取る**顧客） |
+| レーキ | — | `fee_transactions` source=`rake` |
+
+- `withdraw` / `seat_out` はトリガー対象外。DB関数 `poker_seat_in` / `poker_add_chips` / `poker_seat_out` が残高更新まで1トランザクションで行う（service_role のみ実行可）
+- 1席1人・1人1席は `poker_sessions` の部分ユニークインデックスで保証
 
 ### ⚠️ 顧客削除時の chip_transactions FK
 - `from_user_id` / `to_user_id` は **CASCADE ではなく SET NULL** で運用
@@ -385,7 +392,7 @@ Vercel上では発生しないため、直接デプロイで回避可能。
 Vercel CLI は encrypted env vars を `""` で返す仕様。実際は本番では正しく読み込まれる。
 
 ### ⚠️ PWA / iOS standalone で `window.open(_blank)` がブロックされる
-ポーカー管理リンク等の外部遷移は `isStandalone` を検出して `window.location.href` にフォールバックしている（`AdminSidebar.tsx`）。
+外部サイトへ遷移させる場合は `isStandalone` を検出して `window.location.href` にフォールバックすること。
 
 ---
 
@@ -409,10 +416,11 @@ Vercel CLI は encrypted env vars を `""` で返す仕様。実際は本番で�
 - [ ] **ホーム画面の見た目を更にリッチに**
 - [ ] 通知 / プッシュ（要 PWA + Service Worker 整備）
 
-### 🃏 ポーカーシステム連携の深化
-- [x] SSO（URL fragmentでセッション引き渡し）
-- [x] チップ残高共有
-- [ ] ポーカー卓のリアルタイム参加状況をこちらに反映？
+### 🃏 ポーカー
+- [x] 管理画面に統合（`/admin/poker`: 着席・追加・退席・レーキ）
+- [ ] 席移動
+- [ ] QRを出せないお客様の手動検索での着席
+- [ ] 卓ごと・日ごとのレーキ／購入額レポート
 - [ ] ポーカートーナメント結果のお知らせ自動投稿？
 
 ### 📱 PWA / オフライン対応
@@ -463,6 +471,7 @@ Vercel CLI は encrypted env vars を `""` で返す仕様。実際は本番で�
 | 2026-05-14 | `blackjack_trigger.sql` | チップトリガーから `blackjack` を除外 |
 | 2026-05-23 | `add_line_user_id.sql` | `users.line_user_id` 追加 |
 | 2026-09-24 | `enable_rls_remaining.sql` | RLS 未設定だった9テーブルで RLS 有効化 |
+| 2026-09-24 | `poker.sql` | ポーカー卓管理（`poker_tables` / `poker_sessions` / 着席・追加・退席の関数） |
 
 ### 新規マイグレーションの作り方
 1. `docs/migrations/YYYY-MM-DD_<name>.sql` を作成
@@ -527,7 +536,7 @@ vercel project ls
 7. **ランキング**: 10種類（チップ/来店/送受3カテゴリ）、`chipDeltaForUser` で一本化
 8. **GDP**: 「ユーザー間トランスファーのみ」と定義
 9. **操作ログ**: マスター閲覧の audit_logs
-10. **ポーカー連携**: SSO（URL fragment）+ chip_transactions 共有
+10. **ポーカー**: `/admin/poker` で卓・席を管理（旧 es-poker を統合）
 11. **LINE 連携**: LIFF 自動ログイン（設定待ち）
 
 ---

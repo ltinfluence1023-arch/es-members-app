@@ -17,12 +17,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 1. プロジェクト概要
 
-「flair bar es」（札幌のバー）の会員管理プラットフォーム。**1つのSupabase DBを3システムで共有**。
+「flair bar es」（札幌のバー）の会員管理プラットフォーム。顧客向けアプリ・管理画面・ポーカー卓管理をこのリポジトリで提供する。
 
-| システム | リポジトリ | 役割 |
-|---------|----------|------|
-| **本リポジトリ** | `es-app` | 顧客向けアプリ＋管理画面 |
-| ポーカー管理 | `es-poker` | 別リポジトリ。同じSupabase DB |
+> 以前は外部の `es-poker`（別リポジトリ）が同じ DB を共有していたが、2026-09 に本リポジトリの `/admin/poker` へ統合して廃止した。
 
 **本番URL**: https://es-app-livid.vercel.app
 
@@ -132,8 +129,9 @@ import { getBusinessDayStart } from "@/lib/utils/businessDay";
 ### ⚠️ `seat_out` トランザクションが逆
 
 `chip_transactions` の `seat_out` タイプだけ特殊:
-- `from_user_id` に「チップを**受け取る**ユーザー」が入る（ポーカー側の慣習）
-- トリガー対象外。ポーカーシステムが `chip_balance` を直接 UPDATE
+- `from_user_id` に「チップを**受け取る**ユーザー」が入る（旧 es-poker からの慣習）
+- `withdraw` / `seat_out` はトリガー対象外。DB関数 `poker_seat_in` / `poker_add_chips` / `poker_seat_out` が同一トランザクションで `chip_balance` を直接 UPDATE する
+- ポーカーのチップ操作は必ずこの関数（`/api/admin/poker/*`）経由で行う
 
 ### ⚠️ 管理アカウントと顧客アカウントの混在
 
@@ -143,7 +141,7 @@ import { getBusinessDayStart } from "@/lib/utils/businessDay";
 
 ### ⚠️ `chip_transactions_type_check` 変更時
 
-`seat_out`, `withdraw` など es-poker が投入するタイプも含めること。
+`seat_out`, `withdraw`（ポーカー）など既存データにあるタイプをすべて含めること。
 
 ### GDP の定義
 
