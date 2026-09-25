@@ -150,11 +150,11 @@ es-app/
 ├── docs/
 │   ├── HANDOVER.md             # ★ このファイル
 │   ├── business-rules.md       # 業務ルール（旧）
-│   ├── db-schema.sql           # 初期スキーマ
-│   ├── db-schema-fixed.sql     # 修正版初期スキーマ
 │   ├── requirements.md
 │   ├── screens.md
-│   └── migrations/             # ★ 追加マイグレーションSQL（日付順）
+│   ├── setup/                  # ★ 新規環境セットアップ（setup-all.sql / schema-base.sql）
+│   ├── migrations/             # ★ 追加マイグレーションSQL（日付順）
+│   └── archive/                # 旧スキーマ v1・プロンプト集（参照のみ）
 └── middleware.ts               # 認証・ルート保護
 ```
 
@@ -246,7 +246,7 @@ details(jsonb), actor_id, actor_name, ip_address, user_agent, created_at
 - `notices` — お知らせ
 - `qr_tokens` — QR用ワンタイムトークン
 
-完全な初期スキーマは `docs/db-schema-fixed.sql`、追加変更は `docs/migrations/` を時系列で参照。
+全スキーマは `docs/setup/setup-all.sql`（初期スキーマ `docs/setup/schema-base.sql` + マイグレーションの連結）、追加変更は `docs/migrations/` を時系列で参照。
 
 ---
 
@@ -457,13 +457,20 @@ Vercel CLI は encrypted env vars を `""` で返す仕様。実際は本番で�
 | 2026-05-02 | `coupon_v2.sql` | `coupon_templates.subtitle/image_url/notice` 追加 |
 | 2026-05-03 | `staff_password_view.sql` | `admin_users.password_plain` 追加 |
 | 2026-05-06 | `checkin_point.sql` | `point_transactions` に `checkin` type 許可 |
+| 2026-05-13 | `achievements.sql` | アチーブメント3テーブル、`achievement` type 追加 |
+| 2026-05-13 | `daily_quiz.sql` | デイリークイズ3テーブル、`quiz` type 追加 |
+| 2026-05-14 | `blackjack.sql` | `blackjack_sessions`、`blackjack` type 追加 |
+| 2026-05-14 | `blackjack_trigger.sql` | チップトリガーから `blackjack` を除外 |
+| 2026-05-23 | `add_line_user_id.sql` | `users.line_user_id` 追加 |
+| 2026-09-24 | `enable_rls_remaining.sql` | RLS 未設定だった9テーブルで RLS 有効化 |
 
 ### 新規マイグレーションの作り方
 1. `docs/migrations/YYYY-MM-DD_<name>.sql` を作成
-2. SQLを書く（`if exists` / `if not exists` を活用しイドempotentに）
-3. Supabase SQL Editor で実行
-4. コードを更新（TypeScript型・APIロジック）
-5. デプロイ
+2. SQLを書く（`if exists` / `if not exists` を活用しidempotentに）
+3. `bash scripts/build-setup-sql.sh` で `docs/setup/setup-all.sql` を再生成
+4. Supabase SQL Editor で実行
+5. コードを更新（TypeScript型・APIロジック）
+6. デプロイ
 
 ---
 
@@ -493,7 +500,7 @@ vercel project ls
 ```
 
 ### D. DBマイグレーション実行
-1. `docs/migrations/` に新しい SQL を追加
+1. `docs/migrations/` に新しい SQL を追加し、`bash scripts/build-setup-sql.sh` を実行
 2. Supabase ダッシュボード → SQL Editor で実行
 3. `lib/types/database.ts` を手動で更新
 4. デプロイ
@@ -531,11 +538,11 @@ vercel project ls
 - 業務ルール: `docs/business-rules.md`
 - 画面仕様: `docs/screens.md`
 - 要件: `docs/requirements.md`
-- 初期スキーマ: `docs/db-schema-fixed.sql`
+- 全スキーマ: `docs/setup/setup-all.sql`（新規構築手順: `docs/setup/README.md`）
 
 ### 外部サービス
 - Vercel: https://vercel.com/ltinfluence1023-2940s-projects
-- Supabase: https://supabase.com/dashboard/project/vjteercfticstkrueajc
+- Supabase: https://supabase.com/dashboard （2026-09 にプロジェクト再作成。旧 `vjteercfticstkrueajc` は消失）
 - LINE Developers（要設定）: https://developers.line.biz/
 
 ### 開発の進め方の引き継ぎノウハウ
@@ -554,4 +561,4 @@ vercel project ls
 
 ---
 
-引き継ぎ担当者の方、何か不明点があればコードコメント・コミットメッセージ・本ドキュメントの **ヒストリー (`docs/prompts.md`)** を参照してください。仕様の決定経緯はそこに残っています。
+引き継ぎ担当者の方、何か不明点があればコードコメント・コミットメッセージ・本ドキュメントの **ヒストリー (`docs/archive/prompts.md`)** を参照してください。仕様の決定経緯はそこに残っています。

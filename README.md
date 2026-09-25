@@ -158,6 +158,7 @@ es-members-app/
 │   └── utils/           # 共通ユーティリティ
 └── docs/
     ├── HANDOVER.md      # 詳細な仕様書
+    ├── setup/           # 新規環境セットアップ（全スキーマ一括SQL）
     └── migrations/      # DBマイグレーション履歴
 ```
 

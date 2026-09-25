@@ -69,8 +69,12 @@ lib/
 
 docs/
 ├── HANDOVER.md         # 詳細な引き継ぎドキュメント
+├── setup/              # ★ 新規環境セットアップ（setup-all.sql / 手順 README）
 ├── migrations/         # DBマイグレーションSQL（時系列）
-└── db-schema-fixed.sql # 初期スキーマ
+└── archive/            # 旧資料（参照のみ）
+
+scripts/
+└── build-setup-sql.sh  # docs/setup/setup-all.sql を再生成
 ```
 
 ---
@@ -181,9 +185,14 @@ pnpm build && vercel --prod --yes
 ### DBマイグレーション
 
 1. `docs/migrations/YYYY-MM-DD_<name>.sql` を作成（idempotentに書く）
-2. Supabase Dashboard → SQL Editor で実行
-3. `lib/types/database.ts` を手動更新
-4. コード更新 → デプロイ
+2. `bash scripts/build-setup-sql.sh` で `docs/setup/setup-all.sql` を再生成
+3. Supabase Dashboard → SQL Editor で実行
+4. `lib/types/database.ts` を手動更新
+5. コード更新 → デプロイ
+
+### 新規環境の構築（Supabaseプロジェクト作り直し等）
+
+`docs/setup/README.md` の手順に従う（`setup-all.sql` を一括実行）。
 
 ---
 

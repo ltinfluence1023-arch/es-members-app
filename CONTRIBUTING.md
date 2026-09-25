@@ -95,9 +95,10 @@ claude
 スキーマ変更が必要な場合:
 
 1. `docs/migrations/YYYY-MM-DD_<説明>.sql` を作成（idempotentに書く）
-2. Supabase Dashboard → SQL Editor で実行
-3. `lib/types/database.ts` を更新
-4. PRに「DBマイグレーション: あり」をチェック
+2. `bash scripts/build-setup-sql.sh` で `docs/setup/setup-all.sql` を再生成
+3. Supabase Dashboard → SQL Editor で実行
+4. `lib/types/database.ts` を更新
+5. PRに「DBマイグレーション: あり」をチェック
 
 ---
 
@@ -115,5 +116,6 @@ Vercel のダッシュボードまたは上記コマンドで実施してくだ�
 ## 困ったとき
 
 - 詳細な仕様・落とし穴 → `docs/HANDOVER.md`
-- DB スキーマ → `docs/db-schema-fixed.sql` + `docs/migrations/`
+- DB スキーマ → `docs/setup/setup-all.sql`（全体）/ `docs/migrations/`（変更履歴）
+- 新規環境構築 → `docs/setup/README.md`
 - 業務ルール → `docs/business-rules.md`
