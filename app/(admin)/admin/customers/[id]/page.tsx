@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdminChipOp } from "@/components/admin/AdminChipOp";
 import { AdminPointOp } from "@/components/admin/AdminPointOp";
+import { FEATURES } from "@/lib/features";
 import { CustomerDeleteButton } from "@/components/admin/CustomerDeleteButton";
 import { AdminAchievementGrant } from "@/components/admin/AdminAchievementGrant";
 
@@ -175,13 +176,13 @@ export default async function AdminCustomerDetailPage({
       {/* Admin operations */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AdminChipOp userId={id} />
-        {isMaster ? (
+        {FEATURES.points && (isMaster ? (
           <AdminPointOp userId={id} />
         ) : (
           <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-center text-xs text-muted-foreground">
             💎 ポイント操作はマスター権限のみ
           </div>
-        )}
+        ))}
       </div>
 
       {/* アチーブメント付与 */}

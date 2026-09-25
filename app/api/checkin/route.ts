@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { haversineMeters, getStoreLocationConfig } from "@/lib/utils/geo";
 import { checkAutoAchievements } from "@/lib/utils/autoAchievements";
+import { FEATURES } from "@/lib/features";
 
 // R-201〜R-206: チェックインルール
 export async function POST(request: NextRequest) {
@@ -90,14 +91,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: txError.message }, { status: 500 });
   }
 
-  // チェックインポイント (10pt) — トリガーで残高更新
-  const POINT_BONUS = 10;
-  await adminClient.from("point_transactions").insert({
-    user_id: user.id,
-    amount: POINT_BONUS,
-    type: "checkin",
-    memo: "チェックインポイント",
-  });
+  // チェックインポイント (10pt) — トリガーで残高更新。ポイント非公開中は付与しない
+  const POINT_BONUS = FEATURES.points ? 10 : 0;
+  if (POINT_BONUS > 0) {
+    await adminClient.from("point_transactions").insert({
+      user_id: user.id,
+      amount: POINT_BONUS,
+      type: "checkin",
+      memo: "チェックインポイント",
+    });
+  }
 
   // 自動アチーブメントチェック（エラーは握りつぶし）
   await checkAutoAchievements(user.id, "checkin");

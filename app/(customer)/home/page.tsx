@@ -6,7 +6,8 @@ import { ChipCard } from "@/components/customer/ChipCard";
 import { TodayRanking } from "@/components/customer/TodayRanking";
 import { LiveAtStore } from "@/components/customer/LiveAtStore";
 import { ActivityFeed, type ActivityEvent } from "@/components/customer/ActivityFeed";
-import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2, Trophy, Spade } from "lucide-react";
+import { Bell, ArrowLeftRight, Activity, Gem, ChevronRight, HelpCircle, CheckCircle2, Trophy, Spade, Star } from "lucide-react";
+import { FEATURES } from "@/lib/features";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
 import { fetchAchievementProgress } from "@/lib/utils/autoAchievements";
 import { calcAchievementRank } from "@/lib/utils/achievementRank";
@@ -24,11 +25,13 @@ interface UserWithRank {
 }
 
 const ACTION_BUTTONS = [
-  { icon: Bell,           label: "お知らせ",    href: "/notices" },
-  { icon: ArrowLeftRight, label: "QR転送",      href: "/qr" },
-  { icon: Activity,       label: "チップ履歴",  href: "/history?tab=chip" },
-  { icon: Gem,            label: "ポイント履歴", href: "/history?tab=point" },
-] as const;
+  { icon: Bell,           label: "お知らせ",    href: "/notices", show: true },
+  // 送金が非公開の間も /qr はマイQR（スタッフ提示・店舗チェックイン）として使う
+  { icon: ArrowLeftRight, label: FEATURES.transfer ? "QR転送" : "マイQR", href: "/qr", show: true },
+  { icon: Activity,       label: "チップ履歴",  href: "/history?tab=chip", show: true },
+  { icon: Gem,            label: "ポイント履歴", href: "/history?tab=point", show: FEATURES.points },
+  { icon: Star,           label: "ランク詳細",  href: "/menu/rank", show: !FEATURES.points },
+].filter((b) => b.show);
 
 export default async function HomePage() {
   const supabase = await createClient();

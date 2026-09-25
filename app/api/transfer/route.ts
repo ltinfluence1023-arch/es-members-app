@@ -1,3 +1,4 @@
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -11,6 +12,7 @@ const transferSchema = z.object({
 
 // R-301〜R-306: チップ送金ルール
 export async function POST(request: NextRequest) {
+  if (!FEATURES.transfer) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

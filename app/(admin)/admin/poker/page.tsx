@@ -14,7 +14,7 @@ export default async function AdminPokerPage() {
   const [tables, master] = await Promise.all([getPokerState(), isMaster(user.id)]);
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div>
         <h1 className="text-xl font-semibold">ポーカー</h1>
         <p className="text-sm text-muted-foreground">

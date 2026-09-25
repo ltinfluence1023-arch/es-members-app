@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 export async function GET(request: NextRequest) {
+  if (!FEATURES.transfer) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

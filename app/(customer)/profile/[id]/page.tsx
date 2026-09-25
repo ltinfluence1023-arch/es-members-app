@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { AvatarImage } from "@/components/customer/AvatarImage";
+import { FEATURES } from "@/lib/features";
 
 export default async function PublicProfilePage({
   params,
@@ -93,10 +94,10 @@ export default async function PublicProfilePage({
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid gap-3 ${FEATURES.points ? "grid-cols-3" : "grid-cols-2"}`}>
         {[
           { label: "Chip",  value: profile.chip_balance.toLocaleString(),        sub: "保有チップ" },
-          { label: "PT",    value: profile.point_balance.toLocaleString(),        sub: "保有ポイント" },
+          ...(FEATURES.points ? [{ label: "PT",    value: profile.point_balance.toLocaleString(),        sub: "保有ポイント" }] : []),
           { label: "Visit", value: profile.total_visit_count.toLocaleString(),    sub: "来店回数" },
         ].map(({ label, value, sub }) => (
           <div key={label} className="card-elevated rounded-2xl p-4 text-center">

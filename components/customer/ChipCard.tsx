@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FEATURES } from "@/lib/features";
 import { type AchievementRankKey, getRankStyleByKey } from "@/lib/utils/achievementRank";
 
 interface RankStyle {
@@ -234,6 +235,7 @@ export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, avat
           {/* Bottom: Points + visit count + refresh */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              {FEATURES.points && (<>
               <div className="flex items-baseline gap-1">
                 <span className="text-xs">💎</span>
                 <span className="text-[14px] font-black tabular-nums text-white">
@@ -242,6 +244,7 @@ export function ChipCard({ chipBalance, pointBalance, visitCount, nickname, avat
                 <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.48)" }}>PT</span>
               </div>
               <div className="w-px h-3.5" style={{ background: "rgba(255,255,255,0.18)" }} />
+              </>)}
               <div className="flex items-baseline gap-1">
                 <span className="text-xs">🍷</span>
                 <span className="text-[14px] font-black tabular-nums text-white">

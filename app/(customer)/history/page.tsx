@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { FEATURES } from "@/lib/features";
 import { ChipBalanceChart } from "@/components/customer/ChipBalanceChart";
 
 const CHIP_LABELS: Record<string, string> = {
@@ -75,7 +76,7 @@ export default async function HistoryPage({
   if (!user) redirect("/login");
 
   const { tab } = await searchParams;
-  const activeTab = tab === "point" ? "point" : "chip";
+  const activeTab = tab === "point" && FEATURES.points ? "point" : "chip";
 
   const adminClient = createAdminClient();
 
@@ -133,7 +134,7 @@ export default async function HistoryPage({
         >
           🪙 チップ
         </a>
-        <a
+        {FEATURES.points && <a
           href="/history?tab=point"
           className={`flex-1 py-3 text-[15px] font-black tracking-wide text-center transition-all ${activeTab === "point" ? "" : "text-muted-foreground"}`}
           style={activeTab === "point" ? {
@@ -143,7 +144,7 @@ export default async function HistoryPage({
           } : undefined}
         >
           💎 ポイント
-        </a>
+        </a>}
       </div>
 
       {/* Chart */}
