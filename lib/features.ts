@@ -8,6 +8,8 @@ export const FEATURES = {
   transfer: false,
   /** ポイント（pt）: 残高表示・ポイント履歴・クーポン交換・チェックイン時の付与・管理画面のポイント操作 */
   points: false,
+  /** アチーブメント: ミッション一覧・達成時のチップ付与・ホームの達成度表示・管理画面のアチーブメント */
+  achievements: false,
 } as const;
 
 export const FEATURE_DISABLED_MESSAGE = "この機能は現在ご利用いただけません";

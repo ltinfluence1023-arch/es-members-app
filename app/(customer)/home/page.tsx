@@ -132,7 +132,7 @@ export default async function HomePage() {
       detail:    "クイズに正解！",
       timestamp: r.answered_at,
     })),
-    ...(achievementRows ?? []).map((r) => ({
+    ...(FEATURES.achievements ? achievementRows ?? [] : []).map((r) => ({
       type:      "achievement" as const,
       userId:    r.user_id,
       nickname:  userMap.get(r.user_id)?.nickname ?? "—",
@@ -182,8 +182,8 @@ export default async function HomePage() {
         avatarUrl={typedUser?.avatar_url ?? null}
         rankName={rankName}
         userId={user.id}
-        achievementRankKey={achievementRank.key}
-        achievementPct={achievementPct}
+        achievementRankKey={FEATURES.achievements ? achievementRank.key : undefined}
+        achievementPct={FEATURES.achievements ? achievementPct : undefined}
       />
 
       {/* Action buttons */}
@@ -258,7 +258,7 @@ export default async function HomePage() {
         </Link>
 
         {/* アチーブメント */}
-        <Link href="/achievements" className="block interactive">
+        {FEATURES.achievements && <Link href="/achievements" className="block interactive">
           <div
             className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
             style={{ borderColor: "oklch(0.63 0.26 22 / 30%)" }}
@@ -298,7 +298,7 @@ export default async function HomePage() {
             </div>
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>
-        </Link>
+        </Link>}
 
         {/* 4列グリッド */}
         <div className="grid grid-cols-4 gap-2.5">

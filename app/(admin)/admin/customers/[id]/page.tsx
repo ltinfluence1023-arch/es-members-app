@@ -187,9 +187,11 @@ export default async function AdminCustomerDetailPage({
       </div>
 
       {/* アチーブメント付与 */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <AdminAchievementGrant userId={typedUser.id} />
-      </div>
+      {FEATURES.achievements && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <AdminAchievementGrant userId={typedUser.id} />
+        </div>
+      )}
 
       {/* Chip history */}
       <div>

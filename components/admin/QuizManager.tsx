@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Loader2, FileUp } from "lucide-react";
+import { QuizCsvImport } from "@/components/admin/QuizCsvImport";
 
 interface Question {
   id: string;
@@ -25,10 +26,16 @@ const EMPTY_FORM = {
 export function QuizManager({ initialQuestions }: { initialQuestions: Question[] }) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [showForm, setShowForm]   = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm]           = useState(EMPTY_FORM);
   const [saving, setSaving]       = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
+
+  async function reloadQuestions() {
+    const res = await fetch("/api/admin/quiz");
+    if (res.ok) setQuestions(await res.json());
+  }
 
   async function handleCreate() {
     if (!form.question || !form.option_a || !form.option_b || !form.option_c || !form.option_d) {
@@ -80,15 +87,28 @@ export function QuizManager({ initialQuestions }: { initialQuestions: Question[]
             毎日ランダムに1問が出題されます（有効な問題から選択）
           </p>
         </div>
+        <div className="flex gap-2">
         <button
-          onClick={() => { setShowForm((v) => !v); setError(null); }}
+          onClick={() => { setShowImport((v) => !v); setShowForm(false); }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold border border-border text-muted-foreground hover:bg-muted interactive"
+        >
+          <FileUp size={16} />
+          CSV一括登録
+        </button>
+        <button
+          onClick={() => { setShowForm((v) => !v); setShowImport(false); setError(null); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-white interactive"
           style={{ background: "var(--primary)", boxShadow: "var(--shadow-neon)" }}
         >
           <Plus size={16} />
           問題追加
         </button>
+        </div>
       </div>
+
+      {showImport && (
+        <QuizCsvImport onImported={() => { setShowImport(false); reloadQuestions(); }} />
+      )}
 
       {/* 作成フォーム */}
       {showForm && (

@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 const BUCKET   = "claim-proofs";
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request: NextRequest) {
+  if (!FEATURES.achievements) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
