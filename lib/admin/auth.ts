@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type AdminRole = "admin" | "staff";
+import type { AdminRole } from "@/lib/admin/permissions";
+
+export type { AdminRole };
 export interface AdminInfo { id: string; name: string; role: AdminRole }
 
 export async function getAdminInfo(userId: string): Promise<AdminInfo | null> {

@@ -12,6 +12,7 @@ const CHIP_LABELS: Record<string, string> = {
   fee:      "送付手数料",
   seat_out: "ポーカー卓 退席",
   withdraw: "ポーカー卓 引き出し",
+  migration: "旧アプリから引き継ぎ",
   purchase: "購入",
   coupon:   "クーポン",
 };

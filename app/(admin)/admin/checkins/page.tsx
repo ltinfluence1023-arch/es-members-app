@@ -4,20 +4,15 @@ import { redirect } from "next/navigation";
 import { getBusinessDayStartUTC, getBusinessDayEndUTC } from "@/lib/utils/businessDay";
 import { CheckinsClient } from "@/components/admin/CheckinsClient";
 
-async function isAdmin(userId: string) {
-  const { data } = await createAdminClient()
-    .from("admin_users")
-    .select("id")
-    .eq("id", userId)
-    .single();
-  return !!data;
-}
+import { getAdminInfo } from "@/lib/admin/auth";
 
 export default async function CheckinsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!(await isAdmin(user.id))) redirect("/login");
+  const me = await getAdminInfo(user.id);
+  if (!me) redirect("/login");
+  const isMaster = me.role === "admin";
 
   const adminClient = createAdminClient();
   const startUTC = getBusinessDayStartUTC();
@@ -105,7 +100,7 @@ export default async function CheckinsPage() {
         <h1 className="text-xl font-bold">チェックイン</h1>
         <p className="text-sm text-muted-foreground mt-0.5">本日の来店記録・日別履歴</p>
       </div>
-      <CheckinsClient initialData={initialData} />
+      <CheckinsClient initialData={isMaster ? initialData : { ...initialData, flow: undefined }} isMaster={isMaster} />
     </div>
   );
 }

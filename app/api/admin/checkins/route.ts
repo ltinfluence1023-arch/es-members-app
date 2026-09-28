@@ -3,20 +3,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { getBusinessDayStartUTC, getBusinessDayEndUTC } from "@/lib/utils/businessDay";
 
-async function isAdmin(userId: string) {
-  const { data } = await createAdminClient().from("admin_users").select("id").eq("id", userId).single();
-  return !!data;
-}
+import { getAdminInfo } from "@/lib/admin/auth";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!(await isAdmin(user.id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const me = await getAdminInfo(user.id);
+  if (!me) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // スタッフ・ディーラーは当日分のみ・チップフロー集計なし（lib/admin/permissions.ts）
+  const isMaster = me.role === "admin";
 
   // date param: "YYYY-MM-DD" in JST calendar (business day label)
   // If omitted → today's business day
-  const dateParam = request.nextUrl.searchParams.get("date");
+  const dateParam = isMaster ? request.nextUrl.searchParams.get("date") : null;
   let startUTC: Date;
 
   if (dateParam) {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       visits: [],
       start: startUTC.toISOString(),
       end: endUTC.toISOString(),
-      flow: flowStats,
+      flow: isMaster ? flowStats : undefined,
     });
   }
 
@@ -105,6 +105,6 @@ export async function GET(request: NextRequest) {
     visits: enriched,
     start: startUTC.toISOString(),
     end: endUTC.toISOString(),
-    flow: flowStats,
+    flow: isMaster ? flowStats : undefined,
   });
 }

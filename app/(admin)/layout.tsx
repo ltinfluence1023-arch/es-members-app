@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex h-screen bg-background">
-      <AdminSidebar isMaster={me.role === "admin"} currentName={me.name} />
+      <AdminSidebar role={me.role} currentName={me.name} />
       <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
         <div className="p-4 lg:p-6 max-w-7xl mx-auto">{children}</div>
       </main>

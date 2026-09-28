@@ -92,8 +92,11 @@ scripts/
 
 ```typescript
 import { isMaster, isAdmin } from "@/lib/admin/auth";
-// isMaster() = マスター権限、isAdmin() = スタッフ含む管理者全員
+// isMaster() = マスター権限、isAdmin() = スタッフ・ディーラー含む管理者全員
 ```
+
+権限は マスター(admin) / スタッフ(staff) / ディーラー(dealer) の3種類。
+**画面・APIを追加したら `lib/admin/permissions.ts` の許可リストを確認すること**（マスター以外は許可リストにあるパスしか使えない。`middleware.ts` で `/admin/*` と `/api/admin/*` に適用）。
 
 ### 操作ログ（管理画面の変更操作は必須）
 

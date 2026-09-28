@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FEATURES } from "@/lib/features";
-import { Menu, User, Coins, Star, FileText, Shield, LogOut, ChevronRight, Gem, HelpCircle, Trophy, Spade } from "lucide-react";
+import { Menu, User, Coins, Star, FileText, Shield, LogOut, ChevronRight, Gem, HelpCircle, Trophy, Spade, ArrowRightLeft } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -23,6 +23,7 @@ const menuItems = [
   { href: "/history?tab=chip",  icon: Coins,      label: "チップ履歴" },
   { href: "/history?tab=point", icon: Gem,        label: "ポイント履歴" },
   { href: "/menu/rank",         icon: Star,       label: "ランク詳細" },
+  { href: "/menu/migration",    icon: ArrowRightLeft, label: "旧アプリからの引き継ぎ" },
 ].filter((i) => FEATURES.points || !i.href.includes("tab=point"));
 
 const legalItems = [

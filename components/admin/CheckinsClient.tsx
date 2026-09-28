@@ -61,7 +61,16 @@ function dateLabel(iso: string | null, offset: number) {
   return label;
 }
 
-export function CheckinsClient({ initialData }: { initialData: ApiResponse }) {
+// マスターのみ顧客詳細へのリンクにする（スタッフ・ディーラーは当日の一覧のみ）
+function Cell({ userId, linked, className, style, children }: {
+  userId: string; linked: boolean; className?: string; style?: React.CSSProperties; children: React.ReactNode;
+}) {
+  return linked
+    ? <Link href={`/admin/customers/${userId}`} className={className} style={style}>{children}</Link>
+    : <span className={className} style={style}>{children}</span>;
+}
+
+export function CheckinsClient({ initialData, isMaster }: { initialData: ApiResponse; isMaster: boolean }) {
   const [data, setData] = useState<ApiResponse>(initialData);
   const [daysAgo, setDaysAgo] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -127,22 +136,22 @@ export function CheckinsClient({ initialData }: { initialData: ApiResponse }) {
       {/* Date nav + refresh */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <button
+          {isMaster && <button
             onClick={() => setDaysAgo((d) => d + 1)}
             className="p-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors"
           >
             <ChevronLeft size={16} />
-          </button>
+          </button>}
           <span className="text-sm font-semibold min-w-[200px] text-center">
             {dateLabel(data.start, daysAgo)}
           </span>
-          <button
+          {isMaster && <button
             onClick={() => setDaysAgo((d) => Math.max(0, d - 1))}
             disabled={daysAgo === 0}
             className="p-1.5 rounded-lg border border-border hover:bg-muted/40 disabled:opacity-30 transition-colors"
           >
             <ChevronRight size={16} />
-          </button>
+          </button>}
         </div>
 
         <div className="flex items-center gap-3">
@@ -176,6 +185,7 @@ export function CheckinsClient({ initialData }: { initialData: ApiResponse }) {
             {visits.length}<span className="text-sm font-normal text-muted-foreground ml-1">人</span>
           </p>
         </div>
+        {isMaster && (<>
         <div className="rounded-xl border border-border bg-card p-4 col-span-1">
           <p className="text-xs text-muted-foreground mb-1">GDP（ユーザー間送付）</p>
           <p className="text-2xl font-black" style={{ color: "var(--chip)" }}>
@@ -206,6 +216,7 @@ export function CheckinsClient({ initialData }: { initialData: ApiResponse }) {
             </div>
           </div>
         </div>
+        </>)}
       </div>
       <p className="text-[11px] text-muted-foreground font-mono">
         集計期間: {data.start ? formatBusinessDate(new Date(data.start)) : "—"} 06:00 〜 翌 05:59
@@ -231,31 +242,31 @@ export function CheckinsClient({ initialData }: { initialData: ApiResponse }) {
             </thead>
             <tbody>
               {visits.map((v) => (
-                <tr key={v.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group cursor-pointer">
+                <tr key={v.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group ${isMaster ? "cursor-pointer" : ""}`}>
                   <td className="py-3 px-4 font-mono text-sm">
-                    <Link href={`/admin/customers/${v.user_id}`} className="block">{fmtTime(v.checked_in_at)}</Link>
+                    <Cell userId={v.user_id} linked={isMaster} className="block">{fmtTime(v.checked_in_at)}</Cell>
                   </td>
                   <td className="py-3 px-4 font-medium">
-                    <Link href={`/admin/customers/${v.user_id}`} className="block group-hover:text-primary transition-colors">
+                    <Cell userId={v.user_id} linked={isMaster} className="block group-hover:text-primary transition-colors">
                       {v.nickname}
-                    </Link>
+                    </Cell>
                   </td>
                   <td className="py-3 px-4 text-muted-foreground text-xs">
-                    <Link href={`/admin/customers/${v.user_id}`} className="block">{v.rankName ?? "—"}</Link>
+                    <Cell userId={v.user_id} linked={isMaster} className="block">{v.rankName ?? "—"}</Cell>
                   </td>
                   <td className="py-3 px-4 text-muted-foreground text-xs font-mono hidden md:table-cell">
-                    <Link href={`/admin/customers/${v.user_id}`} className="block">{fmtBirthday(v.birthday)}</Link>
+                    <Cell userId={v.user_id} linked={isMaster} className="block">{fmtBirthday(v.birthday)}</Cell>
                   </td>
                   <td className="py-3 px-4 text-right font-mono font-bold" style={{ color: "var(--primary)" }}>
-                    <Link href={`/admin/customers/${v.user_id}`} className="block">
+                    <Cell userId={v.user_id} linked={isMaster} className="block">
                       {v.visitCount}<span className="text-xs font-normal text-muted-foreground ml-0.5">回</span>
-                    </Link>
+                    </Cell>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <Link href={`/admin/customers/${v.user_id}`} className="flex items-center justify-end gap-2 font-mono font-bold" style={{ color: "var(--chip)" }}>
+                    <Cell userId={v.user_id} linked={isMaster} className="flex items-center justify-end gap-2 font-mono font-bold" style={{ color: "var(--chip)" }}>
                       +{v.bonus_chip}
                       <ArrowRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Link>
+                    </Cell>
                   </td>
                 </tr>
               ))}

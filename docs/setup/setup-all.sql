@@ -761,6 +761,52 @@ CREATE INDEX IF NOT EXISTS idx_users_line_user_id
   WHERE line_user_id IS NOT NULL;
 
 
+-- ===== docs/migrations/2026-09-24_enable_rls_remaining 2.sql =====
+-- ============================================================
+-- RLS 未設定テーブルの保護
+-- ============================================================
+--
+-- 背景:
+--   2026-05 以降に追加したテーブルは RLS が無効のままで、
+--   公開されている anon キーから REST 経由で読み書きできる状態だった。
+--   アプリはこれらを service_role (createAdminClient) 経由でのみ操作するため、
+--   ポリシーなしで RLS を有効化しても動作に影響はない。
+-- ============================================================
+
+alter table fee_transactions    enable row level security;
+alter table audit_logs          enable row level security;
+alter table achievements        enable row level security;
+alter table user_achievements   enable row level security;
+alter table achievement_claims  enable row level security;
+alter table quiz_questions      enable row level security;
+alter table daily_quiz_schedule enable row level security;
+alter table quiz_answers        enable row level security;
+alter table blackjack_sessions  enable row level security;
+
+
+-- ===== docs/migrations/2026-09-24_enable_rls_remaining 3.sql =====
+-- ============================================================
+-- RLS 未設定テーブルの保護
+-- ============================================================
+--
+-- 背景:
+--   2026-05 以降に追加したテーブルは RLS が無効のままで、
+--   公開されている anon キーから REST 経由で読み書きできる状態だった。
+--   アプリはこれらを service_role (createAdminClient) 経由でのみ操作するため、
+--   ポリシーなしで RLS を有効化しても動作に影響はない。
+-- ============================================================
+
+alter table fee_transactions    enable row level security;
+alter table audit_logs          enable row level security;
+alter table achievements        enable row level security;
+alter table user_achievements   enable row level security;
+alter table achievement_claims  enable row level security;
+alter table quiz_questions      enable row level security;
+alter table daily_quiz_schedule enable row level security;
+alter table quiz_answers        enable row level security;
+alter table blackjack_sessions  enable row level security;
+
+
 -- ===== docs/migrations/2026-09-24_enable_rls_remaining.sql =====
 -- ============================================================
 -- RLS 未設定テーブルの保護
@@ -782,6 +828,201 @@ alter table quiz_questions      enable row level security;
 alter table daily_quiz_schedule enable row level security;
 alter table quiz_answers        enable row level security;
 alter table blackjack_sessions  enable row level security;
+
+
+-- ===== docs/migrations/2026-09-24_poker 2.sql =====
+-- ============================================================
+-- ポーカー（リングゲーム）卓管理
+-- ============================================================
+--
+-- 背景:
+--   外部の es-poker を廃止し、es-app の管理画面に統合する。
+--   ディーラーが卓の席をタップ → 顧客のマイQRを読み取り → 着席させる。
+--
+-- チップの流れ:
+--   引き出し: アカウント残高 → 卓        chip_transactions type='withdraw'（from_user_id=顧客）
+--   購入    : 現金 → 卓（残高は動かない） chip_transactions には記録しない（poker_sessions.purchase_total）
+--   退席    : 卓の残チップ → アカウント残高 chip_transactions type='seat_out'（from_user_id=受け取る顧客 ※既存慣習）
+--   レーキ  : fee_transactions source='rake'（API から直接 INSERT）
+--
+--   withdraw / seat_out は apply_chip_transaction トリガーの対象外のため、
+--   残高更新は以下の関数内で直接 UPDATE する（同一トランザクションで整合性を保証）。
+-- ============================================================
+
+-- 1. 卓
+create table if not exists poker_tables (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  seat_count  int  not null default 10 check (seat_count between 2 and 10),
+  sort_order  int  not null default 0,
+  is_active   boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+
+insert into poker_tables (name, sort_order)
+select 'Table 1', 1
+ where not exists (select 1 from poker_tables);
+
+-- 2. 着席セッション（1着席 = 1行。退席で closed）
+create table if not exists poker_sessions (
+  id              uuid primary key default gen_random_uuid(),
+  table_id        uuid not null references poker_tables(id),
+  seat_no         int  not null check (seat_no >= 1),
+  user_id         uuid not null references users(id) on delete cascade,
+  status          text not null default 'seated' check (status in ('seated', 'closed')),
+  withdraw_total  int  not null default 0 check (withdraw_total >= 0),
+  purchase_total  int  not null default 0 check (purchase_total >= 0),
+  cash_out        int  check (cash_out >= 0),
+  seated_by       uuid references admin_users(id) on delete set null,
+  closed_by       uuid references admin_users(id) on delete set null,
+  seated_at       timestamptz not null default now(),
+  closed_at       timestamptz
+);
+
+-- 1席に1人、1人1席
+create unique index if not exists uq_poker_sessions_seat
+  on poker_sessions (table_id, seat_no) where status = 'seated';
+create unique index if not exists uq_poker_sessions_user
+  on poker_sessions (user_id) where status = 'seated';
+create index if not exists idx_poker_sessions_user
+  on poker_sessions (user_id, seated_at desc);
+
+alter table poker_tables   enable row level security;
+alter table poker_sessions enable row level security;
+
+-- 3. 着席（引き出し and/or 購入）
+create or replace function poker_seat_in(
+  p_table_id uuid,
+  p_seat_no  int,
+  p_user_id  uuid,
+  p_withdraw int,
+  p_purchase int,
+  p_staff_id uuid,
+  p_memo     text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_seat_count int;
+  v_balance    int;
+  v_session_id uuid;
+begin
+  if p_withdraw < 0 or p_purchase < 0 or p_withdraw + p_purchase <= 0 then
+    raise exception 'INVALID_AMOUNT';
+  end if;
+
+  select seat_count into v_seat_count
+    from poker_tables where id = p_table_id and is_active;
+  if not found then raise exception 'TABLE_NOT_FOUND'; end if;
+  if p_seat_no < 1 or p_seat_no > v_seat_count then raise exception 'INVALID_SEAT'; end if;
+
+  select chip_balance into v_balance from users where id = p_user_id for update;
+  if not found then raise exception 'USER_NOT_FOUND'; end if;
+
+  if exists (select 1 from poker_sessions where user_id = p_user_id and status = 'seated') then
+    raise exception 'ALREADY_SEATED';
+  end if;
+  if exists (select 1 from poker_sessions where table_id = p_table_id and seat_no = p_seat_no and status = 'seated') then
+    raise exception 'SEAT_TAKEN';
+  end if;
+  if v_balance < p_withdraw then raise exception 'INSUFFICIENT_BALANCE'; end if;
+
+  insert into poker_sessions (table_id, seat_no, user_id, withdraw_total, purchase_total, seated_by)
+  values (p_table_id, p_seat_no, p_user_id, p_withdraw, p_purchase, p_staff_id)
+  returning id into v_session_id;
+
+  if p_withdraw > 0 then
+    insert into chip_transactions (from_user_id, amount, type, memo, created_by)
+    values (p_user_id, p_withdraw, 'withdraw', p_memo, p_staff_id);
+    update users set chip_balance = chip_balance - p_withdraw where id = p_user_id;
+  end if;
+
+  return v_session_id;
+end;
+$$;
+
+-- 4. 着席中の追加（引き出し and/or 購入）
+create or replace function poker_add_chips(
+  p_session_id uuid,
+  p_withdraw   int,
+  p_purchase   int,
+  p_staff_id   uuid,
+  p_memo       text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_balance int;
+begin
+  if p_withdraw < 0 or p_purchase < 0 or p_withdraw + p_purchase <= 0 then
+    raise exception 'INVALID_AMOUNT';
+  end if;
+
+  select user_id into v_user_id
+    from poker_sessions where id = p_session_id and status = 'seated' for update;
+  if not found then raise exception 'SESSION_NOT_FOUND'; end if;
+
+  select chip_balance into v_balance from users where id = v_user_id for update;
+  if v_balance < p_withdraw then raise exception 'INSUFFICIENT_BALANCE'; end if;
+
+  update poker_sessions
+     set withdraw_total = withdraw_total + p_withdraw,
+         purchase_total = purchase_total + p_purchase
+   where id = p_session_id;
+
+  if p_withdraw > 0 then
+    insert into chip_transactions (from_user_id, amount, type, memo, created_by)
+    values (v_user_id, p_withdraw, 'withdraw', p_memo, p_staff_id);
+    update users set chip_balance = chip_balance - p_withdraw where id = v_user_id;
+  end if;
+end;
+$$;
+
+-- 5. 退席（残チップをアカウントへ戻す）
+create or replace function poker_seat_out(
+  p_session_id uuid,
+  p_cash_out   int,
+  p_staff_id   uuid,
+  p_memo       text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+begin
+  if p_cash_out < 0 then raise exception 'INVALID_AMOUNT'; end if;
+
+  select user_id into v_user_id
+    from poker_sessions where id = p_session_id and status = 'seated' for update;
+  if not found then raise exception 'SESSION_NOT_FOUND'; end if;
+
+  update poker_sessions
+     set status = 'closed', cash_out = p_cash_out, closed_by = p_staff_id, closed_at = now()
+   where id = p_session_id;
+
+  if p_cash_out > 0 then
+    -- seat_out は from_user_id に「受け取る」顧客を入れる（chipDelta.ts の慣習）
+    insert into chip_transactions (from_user_id, amount, type, memo, created_by)
+    values (v_user_id, p_cash_out, 'seat_out', p_memo, p_staff_id);
+    update users set chip_balance = chip_balance + p_cash_out where id = v_user_id;
+  end if;
+end;
+$$;
+
+-- 関数は service_role（API）からのみ実行可能にする
+revoke execute on function poker_seat_in(uuid, int, uuid, int, int, uuid, text)  from public, anon, authenticated;
+revoke execute on function poker_add_chips(uuid, int, int, uuid, text)           from public, anon, authenticated;
+revoke execute on function poker_seat_out(uuid, int, uuid, text)                 from public, anon, authenticated;
 
 
 -- ===== docs/migrations/2026-09-24_poker.sql =====
@@ -977,5 +1218,107 @@ $$;
 revoke execute on function poker_seat_in(uuid, int, uuid, int, int, uuid, text)  from public, anon, authenticated;
 revoke execute on function poker_add_chips(uuid, int, int, uuid, text)           from public, anon, authenticated;
 revoke execute on function poker_seat_out(uuid, int, uuid, text)                 from public, anon, authenticated;
+
+
+-- ===== docs/migrations/2026-09-28_roles_and_legacy_migration.sql =====
+-- ============================================================
+-- 1. 管理アカウントに「ディーラー」権限を追加
+-- 2. 旧アプリからの引き継ぎ申請
+-- ============================================================
+--
+-- 権限:
+--   admin  = マスター（全機能）
+--   staff  = スタッフ（当日のチェックイン情報・自身のPW変更）
+--   dealer = ディーラー（スタッフ + ポーカー業務）
+--   画面・APIごとの可否は lib/admin/permissions.ts で管理する。
+--
+-- 引き継ぎ:
+--   お客様が旧アプリの会員ID・名前・チップ残高を申請 → マスターが旧データと手作業で照合 →
+--   承認すると chip_transactions type='migration'（to_user_id=顧客）で残高に加算（トリガーで反映）。
+--   'migration' はランキング集計から除外する（lib/utils/chipDelta.ts）。
+-- ============================================================
+
+-- 1. ディーラー権限
+alter table admin_users drop constraint if exists admin_users_role_check;
+alter table admin_users
+  add constraint admin_users_role_check check (role in ('admin', 'staff', 'dealer'));
+
+-- 2. chip_transactions に 'migration' を追加（既存タイプはすべて維持）
+alter table chip_transactions drop constraint if exists chip_transactions_type_check;
+alter table chip_transactions
+  add constraint chip_transactions_type_check
+  check (type in (
+    'checkin','transfer','admin','fee',
+    'seat_out','withdraw','purchase','coupon',
+    'quiz','achievement','blackjack','migration'
+  ));
+
+-- 3. 引き継ぎ申請
+create table if not exists legacy_migration_requests (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references users(id) on delete cascade,
+  legacy_member_id  text not null,
+  legacy_name       text not null,
+  reported_chips    int  not null check (reported_chips >= 0),
+  status            text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  granted_chips     int  check (granted_chips >= 0),
+  review_note       text,
+  reviewed_by       uuid references admin_users(id) on delete set null,
+  created_at        timestamptz not null default now(),
+  reviewed_at       timestamptz
+);
+
+-- 申請中は1人1件、承認は 1人1回・旧会員IDごとに1回
+create unique index if not exists uq_legacy_req_pending_user
+  on legacy_migration_requests (user_id) where status = 'pending';
+create unique index if not exists uq_legacy_req_approved_user
+  on legacy_migration_requests (user_id) where status = 'approved';
+create unique index if not exists uq_legacy_req_approved_member
+  on legacy_migration_requests (legacy_member_id) where status = 'approved';
+create index if not exists idx_legacy_req_status
+  on legacy_migration_requests (status, created_at desc);
+
+alter table legacy_migration_requests enable row level security;
+
+-- 4. 承認（申請の確定とチップ付与を1トランザクションで行う）
+create or replace function legacy_migration_approve(
+  p_request_id uuid,
+  p_chips      int,
+  p_staff_id   uuid,
+  p_note       text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_req legacy_migration_requests%rowtype;
+begin
+  if p_chips < 0 then raise exception 'INVALID_AMOUNT'; end if;
+
+  select * into v_req from legacy_migration_requests
+   where id = p_request_id and status = 'pending' for update;
+  if not found then raise exception 'REQUEST_NOT_PENDING'; end if;
+
+  if exists (select 1 from legacy_migration_requests
+              where status = 'approved'
+                and (legacy_member_id = v_req.legacy_member_id or user_id = v_req.user_id)) then
+    raise exception 'ALREADY_MIGRATED';
+  end if;
+
+  update legacy_migration_requests
+     set status = 'approved', granted_chips = p_chips, review_note = p_note,
+         reviewed_by = p_staff_id, reviewed_at = now()
+   where id = p_request_id;
+
+  if p_chips > 0 then
+    insert into chip_transactions (to_user_id, amount, type, memo, created_by)
+    values (v_req.user_id, p_chips, 'migration', '旧アプリから引き継ぎ（会員ID ' || v_req.legacy_member_id || '）', p_staff_id);
+  end if;
+end;
+$$;
+
+revoke execute on function legacy_migration_approve(uuid, int, uuid, text) from public, anon, authenticated;
 
 select 'setup completed' as result;

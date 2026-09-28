@@ -5,11 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Users, Ticket, Bell, LogOut, LayoutDashboard, QrCode,
   ScanLine, Menu, X, BarChart3, CalendarCheck, ShieldCheck, Coins,
-  Spade, FileClock, Trophy,
+  Spade, FileClock, Trophy, KeyRound, ArrowRightLeft,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
+import { canAccessAdminPath, ROLE_LABEL, type AdminRole } from "@/lib/admin/permissions";
 
 type NavItem = { href: string; icon: React.ElementType; label: string; masterOnly?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
@@ -36,6 +37,7 @@ const baseNavGroups: NavGroup[] = [
       { href: "/admin/transactions", icon: LayoutDashboard, label: "取引履歴" },
       { href: "/admin/fees",         icon: Coins,           label: "管理チップ残高" },
       { href: "/admin/rankings",     icon: Trophy,          label: "ランキング履歴" },
+      { href: "/admin/migrations",   icon: ArrowRightLeft,  label: "旧アプリ引き継ぎ" },
       { href: "/admin/reports",      icon: BarChart3,       label: "レポート" },
     ],
   },
@@ -65,14 +67,25 @@ const masterNavGroup: NavGroup = {
   ],
 };
 
+const accountNavGroup: NavGroup = {
+  label: "アカウント",
+  items: [
+    { href: "/admin/account", icon: KeyRound, label: "パスワード変更" },
+  ],
+};
 
-function SidebarContent({ onClose, isMaster, currentName }: { onClose?: () => void; isMaster: boolean; currentName: string | null }) {
+
+function SidebarContent({ onClose, role, currentName }: { onClose?: () => void; role: AdminRole; currentName: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const navGroups: NavGroup[] = isMaster
-    ? [...baseNavGroups, masterNavGroup]
-    : baseNavGroups.map((g) => ({ ...g, items: g.items.filter((i) => !i.masterOnly) }));
+  // 権限ごとに表示できるメニューだけ残す（lib/admin/permissions.ts）
+  const navGroups: NavGroup[] = [...baseNavGroups, masterNavGroup, accountNavGroup]
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((i) => canAccessAdminPath(role, i.href) && (!i.masterOnly || role === "admin")),
+    }))
+    .filter((g) => g.items.length > 0);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -88,7 +101,7 @@ function SidebarContent({ onClose, isMaster, currentName }: { onClose?: () => vo
           <span className="text-sm font-bold text-primary tracking-widest">flair bar es 管理</span>
           {currentName && (
             <span className="text-[10px] text-muted-foreground mt-0.5">
-              {currentName} {isMaster ? "(マスター)" : "(スタッフ)"}
+              {currentName} ({ROLE_LABEL[role]})
             </span>
           )}
         </div>
@@ -139,14 +152,14 @@ function SidebarContent({ onClose, isMaster, currentName }: { onClose?: () => vo
   );
 }
 
-export function AdminSidebar({ isMaster, currentName }: { isMaster: boolean; currentName: string | null }) {
+export function AdminSidebar({ role, currentName }: { role: AdminRole; currentName: string | null }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex h-screen w-56 flex-shrink-0 flex-col border-r border-border">
-        <SidebarContent isMaster={isMaster} currentName={currentName} />
+        <SidebarContent role={role} currentName={currentName} />
       </aside>
 
       {/* Mobile top bar */}
@@ -168,7 +181,7 @@ export function AdminSidebar({ isMaster, currentName }: { isMaster: boolean; cur
             onClick={() => setMobileOpen(false)}
           />
           <div className="relative w-64 h-full shadow-2xl">
-            <SidebarContent onClose={() => setMobileOpen(false)} isMaster={isMaster} currentName={currentName} />
+            <SidebarContent onClose={() => setMobileOpen(false)} role={role} currentName={currentName} />
           </div>
         </div>
       )}

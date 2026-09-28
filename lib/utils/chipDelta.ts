@@ -28,6 +28,12 @@ export function chipDeltaForUser(tx: ChipTxRow, userId: string): number {
 }
 
 /**
+ * ランキング・獲得量の集計から除外するタイプ。
+ * migration = 旧アプリからの残高引き継ぎ（プレイによる増減ではないため）
+ */
+export const RANKING_EXCLUDED_TYPES: readonly string[] = ["migration"];
+
+/**
  * Sum signed deltas across all transactions for every user that touched any of them.
  * Returns: { userId → netDelta }
  */
@@ -43,4 +49,9 @@ export function netChangeByUser(txs: ChipTxRow[]): Record<string, number> {
     }
   }
   return totals;
+}
+
+/** ランキング用の増減集計（RANKING_EXCLUDED_TYPES を除く） */
+export function rankingChangeByUser(txs: ChipTxRow[]): Record<string, number> {
+  return netChangeByUser(txs.filter((tx) => !RANKING_EXCLUDED_TYPES.includes(tx.type)));
 }

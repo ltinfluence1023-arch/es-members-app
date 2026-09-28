@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz" | "achievement" | "blackjack";
+export type ChipTransactionType = "checkin" | "transfer" | "admin" | "event" | "fee" | "purchase" | "coupon" | "seat_out" | "withdraw" | "quiz" | "achievement" | "blackjack" | "migration";
 export type FeeSource = "transfer_fee" | "rake" | "manual_add" | "manual_subtract";
 export type PointTransactionType =
   | "accounting_reward"
@@ -18,7 +18,8 @@ export type PointTransactionType =
   | "checkin";
 export type CouponSource = "admin_grant" | "point_exchange" | "ranking_reward";
 export type QrTokenPurpose = "user_receive" | "coupon_redeem";
-export type AdminRole = "admin" | "staff";
+export type AdminRole = "admin" | "staff" | "dealer";
+export type LegacyMigrationStatus = "pending" | "approved" | "rejected";
 export type PokerSessionStatus = "seated" | "closed";
 
 export interface Database {
@@ -576,6 +577,38 @@ export interface Database {
         };
         Relationships: [];
       };
+      legacy_migration_requests: {
+        Row: {
+          id: string;
+          user_id: string;
+          legacy_member_id: string;
+          legacy_name: string;
+          reported_chips: number;
+          status: LegacyMigrationStatus;
+          granted_chips: number | null;
+          review_note: string | null;
+          reviewed_by: string | null;
+          created_at: string;
+          reviewed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          legacy_member_id: string;
+          legacy_name: string;
+          reported_chips: number;
+          status?: LegacyMigrationStatus;
+          created_at?: string;
+        };
+        // 承認は legacy_migration_approve 関数経由
+        Update: {
+          status?: LegacyMigrationStatus;
+          review_note?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Relationships: [];
+      };
       poker_tables: {
         Row: {
           id: string;
@@ -631,6 +664,10 @@ export interface Database {
       is_admin: {
         Args: { uid: string };
         Returns: boolean;
+      };
+      legacy_migration_approve: {
+        Args: { p_request_id: string; p_chips: number; p_staff_id: string; p_note: string };
+        Returns: undefined;
       };
       poker_seat_in: {
         Args: {

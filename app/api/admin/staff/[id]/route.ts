@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { recordAudit } from "@/lib/admin/audit";
+import { ROLE_LABEL } from "@/lib/admin/permissions";
 
 async function requireMaster(userId: string) {
   const { data } = await createAdminClient()
@@ -58,7 +60,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
-  role: z.enum(["admin", "staff"]).optional(),
+  role: z.enum(["admin", "staff", "dealer"]).optional(),
 });
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -79,7 +81,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   if (name !== undefined || role !== undefined) {
     // If demoting last master, block
-    if (role === "staff" && id !== user.id) {
+    if (role !== undefined && role !== "admin" && id !== user.id) {
       const { data: target } = await adminClient
         .from("admin_users")
         .select("role")
@@ -95,11 +97,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         }
       }
     }
-    const update: { name?: string; role?: "admin" | "staff" } = {};
+    const update: { name?: string; role?: "admin" | "staff" | "dealer" } = {};
     if (name !== undefined) update.name = name;
     if (role !== undefined) update.role = role;
-    const { error } = await adminClient.from("admin_users").update(update).eq("id", id);
+    const { data: updated, error } = await adminClient
+      .from("admin_users").update(update).eq("id", id).select("name, role").single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    await recordAudit({
+      action: role !== undefined ? "staff_role_change" : "staff_update",
+      category: "staff",
+      summary: role !== undefined
+        ? `${updated?.name ?? "—"} の権限を${ROLE_LABEL[role]}に変更`
+        : `${updated?.name ?? "—"} の情報を更新`,
+      target_type: "admin_user",
+      target_id: id,
+      target_label: updated?.name ?? null,
+      details: update,
+      actor_id: user.id,
+      request,
+    });
   }
 
 
