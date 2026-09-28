@@ -6,6 +6,8 @@
  *   staff  = スタッフ  : 当日のチェックイン情報・自身のアカウント（PW変更）
  *   dealer = ディーラー: スタッフ + ポーカー業務
  */
+import { FEATURES } from "@/lib/features";
+
 export type AdminRole = "admin" | "staff" | "dealer";
 
 export const ROLE_LABEL: Record<AdminRole, string> = {
@@ -37,7 +39,15 @@ function matches(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(base + "/");
 }
 
+// 非公開中の機能（lib/features.ts）はマスターも含めて利用不可
+const FEATURE_GATED_PATHS: { enabled: boolean; paths: string[] }[] = [
+  { enabled: FEATURES.achievements, paths: ["/admin/achievements", "/api/admin/achievements"] },
+  { enabled: FEATURES.points, paths: ["/api/admin/point"] },
+];
+
 export function canAccessAdminPath(role: AdminRole, pathname: string): boolean {
+  const gated = FEATURE_GATED_PATHS.some((g) => !g.enabled && g.paths.some((base) => matches(pathname, base)));
+  if (gated) return false;
   if (role === "admin") return true;
   return ALLOWED_PATHS[role].some((base) => matches(pathname, base));
 }

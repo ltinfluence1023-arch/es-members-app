@@ -24,7 +24,9 @@ const menuItems = [
   { href: "/history?tab=point", icon: Gem,        label: "ポイント履歴" },
   { href: "/menu/rank",         icon: Star,       label: "ランク詳細" },
   { href: "/menu/migration",    icon: ArrowRightLeft, label: "旧アプリからの引き継ぎ" },
-].filter((i) => FEATURES.points || !i.href.includes("tab=point"));
+].filter((i) =>
+  (FEATURES.points || !i.href.includes("tab=point")) &&
+  (FEATURES.achievements || i.href !== "/achievements"));
 
 const legalItems = [
   { href: "/menu/terms", icon: FileText, label: "サービス利用規約" },

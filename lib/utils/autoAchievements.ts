@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { FEATURES } from "@/lib/features";
 
 export type AchievementTrigger = "checkin" | "transfer" | "profile";
 
@@ -10,6 +11,7 @@ export async function checkAutoAchievements(
   userId: string,
   trigger: AchievementTrigger,
 ): Promise<void> {
+  if (!FEATURES.achievements) return;
   try {
     const adminClient = createAdminClient();
 
