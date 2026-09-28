@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { recordAudit } from "@/lib/admin/audit";
+import { ROLE_LABEL } from "@/lib/admin/permissions";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
   await recordAudit({
     action: "admin_login",
     category: "auth",
-    summary: `${data.name} がログイン (${data.role === "admin" ? "マスター" : "スタッフ"})`,
+    summary: `${data.name} がログイン (${ROLE_LABEL[data.role]})`,
     actor_id: data.id, request,
   });
 

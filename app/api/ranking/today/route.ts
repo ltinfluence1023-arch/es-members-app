@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
-import { netChangeByUser } from "@/lib/utils/chipDelta";
+import { rankingChangeByUser } from "@/lib/utils/chipDelta";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export async function GET() {
     .gte("created_at", start.toISOString())
     .lt("created_at", end.toISOString());
 
-  const totals = netChangeByUser(txs ?? []);
+  const totals = rankingChangeByUser(txs ?? []);
   const sorted = Object.entries(totals).filter(([, v]) => v !== 0).sort((a, b) => b[1] - a[1]);
   const userIds = sorted.map(([id]) => id);
 

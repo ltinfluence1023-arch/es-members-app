@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, KeyRound, UserPlus, X, ShieldCheck, User as UserIcon, Sparkles, Calculator, Eye, EyeOff } from "lucide-react";
+import { Trash2, KeyRound, UserPlus, X, Sparkles, Calculator, Eye, EyeOff } from "lucide-react";
+import { ROLE_LABEL, type AdminRole } from "@/lib/admin/permissions";
+
+const ROLE_OPTIONS: AdminRole[] = ["staff", "dealer", "admin"];
+const ROLE_HINT: Record<AdminRole, string> = {
+  admin: "全機能",
+  staff: "当日のチェックイン・自分のPW変更",
+  dealer: "スタッフ ＋ ポーカー業務",
+};
 
 const ADMIN_EMAIL_DOMAIN = "admin.local";
 
@@ -11,7 +19,7 @@ interface Staff {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "staff";
+  role: AdminRole;
   created_at: string;
 }
 
@@ -44,6 +52,18 @@ export function StaffManager({ initialStaff, currentUserId }: { initialStaff: St
     const data = await res.json();
     if (!res.ok) { toast.error(data.error ?? "削除失敗"); return; }
     toast.success("削除しました");
+    refresh();
+  }
+
+  async function changeRole(id: string, name: string, role: AdminRole) {
+    const res = await fetch(`/api/admin/staff/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "変更失敗"); return; }
+    toast.success(`${name} の権限を${ROLE_LABEL[role]}に変更しました`);
     refresh();
   }
 
@@ -156,16 +176,22 @@ export function StaffManager({ initialStaff, currentUserId }: { initialStaff: St
                     </button>
                   </td>
                   <td className="py-3 px-4">
-                    <span
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold"
-                      style={{
-                        background: s.role === "admin" ? "var(--primary)" : "oklch(0.5 0.05 270 / 0.2)",
-                        color: s.role === "admin" ? "#fff" : "var(--foreground)",
-                      }}
-                    >
-                      {s.role === "admin" ? <ShieldCheck size={10} /> : <UserIcon size={10} />}
-                      {s.role === "admin" ? "マスター" : "スタッフ"}
-                    </span>
+                    {s.id === currentUserId ? (
+                      <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold text-white" style={{ background: "var(--primary)" }}>
+                        {ROLE_LABEL[s.role]}
+                      </span>
+                    ) : (
+                      <select
+                        value={s.role}
+                        onChange={(e) => changeRole(s.id, s.name, e.target.value as AdminRole)}
+                        className="rounded border border-border bg-background px-2 py-1 text-xs font-bold"
+                        style={s.role === "admin" ? { color: "var(--primary)" } : undefined}
+                      >
+                        {ROLE_OPTIONS.map((r) => (
+                          <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-muted-foreground text-xs hidden md:table-cell">
                     {new Date(s.created_at).toLocaleDateString("ja-JP")}
@@ -191,7 +217,7 @@ export function StaffManager({ initialStaff, currentUserId }: { initialStaff: St
       </div>
 
       <p className="text-[11px] text-muted-foreground">
-        💡 PW欄をタップすると確認できます。各スタッフはこの画面の「自分のPW変更」から自身のパスワードを更新できます。
+        💡 PW欄をタップすると確認できます。権限は一覧から変更できます（マスター: 全機能 / スタッフ: 当日のチェックイン・自分のPW変更 / ディーラー: スタッフ＋ポーカー業務）。各アカウントはメニューの「パスワード変更」から自身のパスワードを更新できます。
       </p>
 
       {showCreate && (
@@ -212,7 +238,7 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   const [name, setName] = useState("");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "staff">("staff");
+  const [role, setRole] = useState<AdminRole>("staff");
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -283,26 +309,21 @@ function CreateStaffModal({ onClose, onSuccess }: { onClose: () => void; onSucce
           </div>
           <div>
             <label className="text-xs text-muted-foreground">権限</label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <button
-                type="button"
-                onClick={() => setRole("staff")}
-                className={`rounded-lg py-2 text-sm font-bold border transition-colors ${
-                  role === "staff" ? "border-primary text-primary" : "border-border text-muted-foreground"
-                }`}
-              >
-                スタッフ
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("admin")}
-                className={`rounded-lg py-2 text-sm font-bold border transition-colors ${
-                  role === "admin" ? "border-primary text-primary" : "border-border text-muted-foreground"
-                }`}
-              >
-                マスター
-              </button>
+            <div className="grid grid-cols-3 gap-2 mt-1">
+              {ROLE_OPTIONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`rounded-lg py-2 text-sm font-bold border transition-colors ${
+                    role === r ? "border-primary text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {ROLE_LABEL[r]}
+                </button>
+              ))}
             </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{ROLE_HINT[role]}</p>
           </div>
           <button
             type="submit"

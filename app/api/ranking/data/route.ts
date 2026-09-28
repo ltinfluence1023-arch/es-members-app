@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
-import { netChangeByUser } from "@/lib/utils/chipDelta";
+import { rankingChangeByUser } from "@/lib/utils/chipDelta";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
 
 type RankTab =
@@ -47,7 +47,7 @@ async function getRanking(tab: RankTab): Promise<{ ranking: RankEntry[]; period:
       .from("chip_transactions")
       .select("type, amount, from_user_id, to_user_id")
       .gte("created_at", from.toISOString());
-    return netChangeByUser(data ?? []);
+    return rankingChangeByUser(data ?? []);
   }
   function packNet(totals: Record<string, number>): [string, number][] {
     return Object.entries(totals).filter(([, v]) => v !== 0).sort((a, b) => b[1] - a[1]);
@@ -141,6 +141,7 @@ async function getRanking(tab: RankTab): Promise<{ ranking: RankEntry[]; period:
     const { data } = await adminClient
       .from("chip_transactions")
       .select("amount, to_user_id")
+      .neq("type", "migration")
       .not("to_user_id", "is", null)
       .gte("created_at", monthStart.toISOString());
     const totals: Record<string, number> = {};

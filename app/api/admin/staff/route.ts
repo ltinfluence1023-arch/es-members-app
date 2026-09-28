@@ -12,7 +12,7 @@ const createSchema = z.object({
     .regex(/^[a-zA-Z0-9_.-]+$/, "英数字・_ . - のみ使用可"),
   password: z.string().min(8, "パスワードは8文字以上"),
   name: z.string().min(1, "名前は必須"),
-  role: z.enum(["admin", "staff"]).default("staff"),
+  role: z.enum(["admin", "staff", "dealer"]).default("staff"),
 });
 
 async function requireMaster(userId: string) {

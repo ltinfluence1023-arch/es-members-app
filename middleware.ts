@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { adminHomePath, canAccessAdminPath, type AdminRole } from "@/lib/admin/permissions";
 
 const PROTECTED_CUSTOMER_PATHS = [
   "/home",
@@ -21,6 +22,7 @@ const PROTECTED_CUSTOMER_PATHS = [
 
 // R-701: 顧客ルートは認証済顧客のみ
 // R-702: 管理ルートは admin_users 登録者のみ
+// R-703: 管理ルート・管理APIは権限（マスター/スタッフ/ディーラー）ごとに制限（lib/admin/permissions.ts）
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -59,10 +61,15 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isAdminApi = pathname.startsWith("/api/admin/");
 
   // 未認証: 保護されたルートへのアクセスを適切なログインへリダイレクト
   if (!user) {
-    if ((pathname === "/admin" || pathname.startsWith("/admin/"))) {
+    if (isAdminApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (isAdminPage) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/admin-login";
       return NextResponse.redirect(redirectUrl);
@@ -75,8 +82,8 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // 管理ルートへのアクセス: サービスロールキーでRLSを回避してチェック (R-702)
-  if ((pathname === "/admin" || pathname.startsWith("/admin/"))) {
+  // 管理ルート・管理APIへのアクセス: サービスロールキーでRLSを回避して権限を確認 (R-702, R-703)
+  if (isAdminPage || isAdminApi) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (serviceRoleKey && supabaseUrl) {
       const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -84,13 +91,23 @@ export async function middleware(request: NextRequest) {
       });
       const { data: adminUser } = await adminSupabase
         .from("admin_users")
-        .select("id")
+        .select("role")
         .eq("id", user.id)
         .single();
+      const role = adminUser?.role as AdminRole | undefined;
 
-      if (!adminUser) {
+      if (!role) {
+        if (isAdminApi) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/admin-login";
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      if (!canAccessAdminPath(role, pathname)) {
+        if (isAdminApi) return NextResponse.json({ error: "この操作の権限がありません" }, { status: 403 });
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = adminHomePath(role);
+        redirectUrl.search = "";
         return NextResponse.redirect(redirectUrl);
       }
     }
@@ -111,12 +128,12 @@ export async function middleware(request: NextRequest) {
       });
       const { data: adminUser } = await adminSupabase
         .from("admin_users")
-        .select("id")
+        .select("role")
         .eq("id", user.id)
         .single();
       if (adminUser) {
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/admin";
+        redirectUrl.pathname = adminHomePath(adminUser.role as AdminRole);
         return NextResponse.redirect(redirectUrl);
       }
     }
