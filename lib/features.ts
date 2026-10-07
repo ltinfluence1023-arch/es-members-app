@@ -10,6 +10,11 @@ export const FEATURES = {
   points: false,
   /** アチーブメント: ミッション一覧・達成時のチップ付与・ホームの達成度表示・管理画面のアチーブメント */
   achievements: false,
+  /**
+   * お知らせ公開時の LINE 一斉通知（line_user_id を持つ全員へ multicast）。
+   * 通数＝費用のため既定はオフ。必要なときだけ true にしてデプロイする。
+   */
+  lineNoticePush: false,
 } as const;
 
 export const FEATURE_DISABLED_MESSAGE = "この機能は現在ご利用いただけません";
