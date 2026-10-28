@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { multicast, noticeText } from "@/lib/line/messaging";
+import { FEATURES } from "@/lib/features";
 
 const schema = z.object({
   title: z.string().min(1),
@@ -30,8 +31,9 @@ export async function POST(request: NextRequest) {
   const { error } = await adminClient.from("notices").insert(parsed.data);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // 公開通知: is_published = true のときだけ LINE 通知を送る
-  if (parsed.data.is_published) {
+  // 公開通知: is_published = true かつ FEATURES.lineNoticePush が有効なときだけ LINE 通知を送る
+  // （一斉通知は通数＝費用のため、既定ではオフ。lib/features.ts を参照）
+  if (parsed.data.is_published && FEATURES.lineNoticePush) {
     // line_user_id を持つ全ユーザーを取得してマルチキャスト
     const { data: lineUsers } = await adminClient
       .from("users")
