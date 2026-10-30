@@ -5,11 +5,14 @@ import {
   createShuffledDeck, handValue, isBlackjack,
   calcNetChips, type Card,
 } from "@/lib/utils/blackjack";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 const MIN_BET = 10;
 const MAX_BET = 100;
 
 export async function POST(request: NextRequest) {
+  if (!FEATURES.blackjack) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
+
   try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

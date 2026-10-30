@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getCurrentPosition } from "@/lib/utils/getCurrentPosition";
-import { FEATURES } from "@/lib/features";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 type QrPayload = { type: "store_checkin" | "user_receive"; token?: string };
 type Status = "loading" | "scanning" | "processing" | "error";
@@ -39,6 +39,7 @@ export function ScannerView() {
               const payload: QrPayload = JSON.parse(decoded);
 
               if (payload.type === "store_checkin") {
+                if (!FEATURES.checkin) throw new Error(FEATURE_DISABLED_MESSAGE);
                 toast.message("位置情報を確認中...");
                 const pos = await getCurrentPosition();
                 const res = await fetch("/api/checkin", {

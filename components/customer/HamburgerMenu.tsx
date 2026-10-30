@@ -26,7 +26,9 @@ const menuItems = [
   { href: "/menu/migration",    icon: ArrowRightLeft, label: "旧アプリからの引き継ぎ" },
 ].filter((i) =>
   (FEATURES.points || !i.href.includes("tab=point")) &&
-  (FEATURES.achievements || i.href !== "/achievements"));
+  (FEATURES.achievements || i.href !== "/achievements") &&
+  (FEATURES.blackjack || i.href !== "/blackjack") &&
+  (FEATURES.quiz || i.href !== "/quiz"));
 
 const legalItems = [
   { href: "/menu/terms", icon: FileText, label: "サービス利用規約" },

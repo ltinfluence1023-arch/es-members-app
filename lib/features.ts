@@ -15,6 +15,20 @@ export const FEATURES = {
    * 通数＝費用のため既定はオフ。必要なときだけ true にしてデプロイする。
    */
   lineNoticePush: false,
+  /**
+   * お客様自身の来店チェックイン（店舗QR＋GPS・チップ付与）と来店ランキング。
+   * 店内で GPS がずれる・位置情報を断る人が出るため停止（2026-10-30）。店舗QRは固定文字列なので GPS だけ外すのは不可
+   */
+  checkin: false,
+  /** デイリークイズ（正解でチップ付与）。管理画面での問題登録は使える */
+  quiz: false,
+  /** ブラックジャック（チップで対戦）と BJ ランキング */
+  blackjack: false,
+  /**
+   * チップ付与・順位上昇・引き継ぎ承認の LINE 個別通知（push）。
+   * 通数＝費用、かつ送り先の公式アカウントと LINE ログインのプロバイダーが揃うまで既定はオフ。
+   */
+  lineChipPush: false,
 } as const;
 
 export const FEATURE_DISABLED_MESSAGE = "この機能は現在ご利用いただけません";

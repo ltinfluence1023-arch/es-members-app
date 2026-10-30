@@ -2,10 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { getBusinessDayStartUTC } from "@/lib/utils/businessDay";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 const QUIZ_CHIP_REWARD = 10;
 
 export async function POST(request: NextRequest) {
+  if (!FEATURES.quiz) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
