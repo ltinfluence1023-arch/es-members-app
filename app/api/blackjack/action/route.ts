@@ -4,10 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   handValue, isBust, dealerPlay, calcNetChips, type Card, type GameResult,
 } from "@/lib/utils/blackjack";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 type Action = "hit" | "stand" | "double";
 
 export async function POST(request: NextRequest) {
+  if (!FEATURES.blackjack) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
+
   try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

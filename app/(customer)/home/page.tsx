@@ -191,7 +191,7 @@ export default async function HomePage() {
         <p className="label-gaming">menu</p>
 
         {/* デイリークイズ */}
-        <Link href="/quiz" className="block interactive">
+        {FEATURES.quiz && <Link href="/quiz" className="block interactive">
           <div
             className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
             style={{ borderColor: quizCompleted ? "oklch(0.55 0.18 145 / 35%)" : "oklch(0.63 0.26 22 / 40%)" }}
@@ -230,10 +230,10 @@ export default async function HomePage() {
             )}
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>
-        </Link>
+        </Link>}
 
         {/* ブラックジャック */}
-        <Link href="/blackjack" className="block interactive">
+        {FEATURES.blackjack && <Link href="/blackjack" className="block interactive">
           <div
             className="card-elevated rounded-2xl px-4 py-3 flex items-center gap-3"
             style={{ borderColor: "oklch(0.45 0.15 145 / 35%)" }}
@@ -255,7 +255,7 @@ export default async function HomePage() {
             </div>
             <ChevronRight size={15} className="flex-shrink-0 text-muted-foreground" />
           </div>
-        </Link>
+        </Link>}
 
         {/* アチーブメント */}
         {FEATURES.achievements && <Link href="/achievements" className="block interactive">

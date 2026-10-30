@@ -3,10 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { haversineMeters, getStoreLocationConfig } from "@/lib/utils/geo";
 import { checkAutoAchievements } from "@/lib/utils/autoAchievements";
-import { FEATURES } from "@/lib/features";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 
 // R-201〜R-206: チェックインルール
 export async function POST(request: NextRequest) {
+  if (!FEATURES.checkin) return NextResponse.json({ error: FEATURE_DISABLED_MESSAGE }, { status: 403 });
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

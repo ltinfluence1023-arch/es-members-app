@@ -7,6 +7,8 @@
  *   - multicast: 最大 500 ユーザーに一括送信
  */
 
+import { FEATURES } from "@/lib/features";
+
 const BASE = "https://api.line.me/v2/bot";
 
 function liffUrl(path = "") {
@@ -28,7 +30,7 @@ export interface LineTextMessage {
 
 /** 1 ユーザーへ push 送信 */
 export async function sendPush(lineUserId: string, text: string): Promise<void> {
-  if (!process.env.LINE_MESSAGING_API_TOKEN) return;
+  if (!FEATURES.lineChipPush || !process.env.LINE_MESSAGING_API_TOKEN) return;
   try {
     await fetch(`${BASE}/message/push`, {
       method: "POST",

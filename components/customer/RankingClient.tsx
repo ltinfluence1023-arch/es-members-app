@@ -45,8 +45,11 @@ const ALL_CATEGORIES: { key: Category; label: string }[] = [
   { key: "transfer", label: "送受" },
   { key: "bj",       label: "BJ" },
 ];
-// 送金が非公開の間は「送受」ランキングを出さない（lib/features.ts）
-const isVisible = (c: Category) => c !== "transfer" || FEATURES.transfer;
+// 非公開の機能のランキングは出さない（lib/features.ts）: 送金→「送受」/ チェックイン→「来店」/ BJ→「BJ」
+const isVisible = (c: Category) =>
+  (c !== "transfer" || FEATURES.transfer) &&
+  (c !== "visit" || FEATURES.checkin) &&
+  (c !== "bj" || FEATURES.blackjack);
 const TABS = ALL_TABS.filter((t) => isVisible(t.category));
 const CATEGORIES = ALL_CATEGORIES.filter((c) => isVisible(c.key));
 
@@ -115,7 +118,9 @@ function RankRow({ item, isSelf, unit, onClick }: RowProps) {
 export function RankingClient({ myId }: { myId: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const activeTab = (searchParams.get("tab") ?? "monthly_chip") as RankTab;
+  const requestedTab = searchParams.get("tab") ?? "monthly_chip";
+  // 非公開カテゴリのタブを URL で直接指定されたら「月間チップ」に戻す
+  const activeTab = (TABS.some((t) => t.key === requestedTab) ? requestedTab : "monthly_chip") as RankTab;
 
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
