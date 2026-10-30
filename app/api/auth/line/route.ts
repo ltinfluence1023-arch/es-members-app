@@ -14,7 +14,7 @@ const schema = z.object({
  * LINE LIFF login → Supabase Auth handoff.
  *
  * Flow:
- *   1. LINE Verify API で accessToken が自チャネル（LINE_CHANNEL_ID）発行のものか確認し、
+ *   1. LINE Verify API で accessToken が自チャネル発行のものか確認し、
  *      Profile API で userId / displayName / pictureUrl を取得
  *   2. public.users.line_user_id で既存ユーザーを検索
  *   3a. 新規 → createUser（パスワードはランダム・誰も知らない）→ public.users 作成
@@ -27,9 +27,12 @@ const schema = z.object({
  *       既存会員のパスワードは docs/migrations/2026-10-30_line_users_random_password.sql で無効化する。
  */
 export async function POST(request: NextRequest) {
-  const channelId = process.env.LINE_CHANNEL_ID;
+  // LIFF ID は「<チャネルID>-<英数字>」なので、チャネルIDは LIFF ID から取る（LIFF と食い違わない）。
+  // LIFF 未設定のときだけ LINE_CHANNEL_ID を使う
+  const liffId    = process.env.NEXT_PUBLIC_LIFF_ID?.trim();
+  const channelId = liffId ? liffId.split("-")[0] : process.env.LINE_CHANNEL_ID?.trim();
   if (!channelId) {
-    return NextResponse.json({ error: "LINE_CHANNEL_ID 未設定" }, { status: 500 });
+    return NextResponse.json({ error: "LINE のチャネル設定がありません" }, { status: 500 });
   }
 
   const body = await request.json().catch(() => null);
