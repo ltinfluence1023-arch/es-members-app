@@ -45,8 +45,8 @@
 - Vercelチーム: `ltinfluence1023-2940s-projects`
 
 ### Supabase
-- プロジェクト ID: `vjteercfticstkrueajc`
-- URL: `https://vjteercfticstkrueajc.supabase.co`
+- プロジェクト ID: `skcpshbtvqkwdofyatve`（2026-09 に再作成。旧 `vjteercfticstkrueajc` は消失）
+- URL: `https://skcpshbtvqkwdofyatve.supabase.co`
 - Storage バケット:
   - `avatars`（プロフィール画像、公開）
   - `coupon-images`（クーポン画像、公開）
@@ -54,7 +54,7 @@
 ### 環境変数（Vercel Production）
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://vjteercfticstkrueajc.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://skcpshbtvqkwdofyatve.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=（anon key）
 SUPABASE_SERVICE_ROLE_KEY=（service role key、サーバー側専用）
 
@@ -65,8 +65,8 @@ STORE_LNG=141.352906            # 店舗経度
 STORE_RADIUS_M=100              # 許可半径（メートル）
 
 # LINE LIFF（任意 — 未設定なら機能無効）
-NEXT_PUBLIC_LIFF_ID=（LIFF ID）
-LINE_CHANNEL_ID=（チャネルID）
+NEXT_PUBLIC_LIFF_ID=2011642805-05OnjF0w   # 2026-10-30 〜 プロバイダー「フレアバーes」の LIFF（旧: 2010172060-ch6PU0Zi）
+LINE_CHANNEL_ID=2011642805                # 同上のログインチャネル（旧: 2010172060）
 ```
 
 ローカル: `.env.local` を作成して同じ値を設定。
